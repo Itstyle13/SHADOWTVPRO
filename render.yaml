@@ -1,0 +1,34 @@
+services:
+  # Backend
+  - type: web
+    name: shadow-tv-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free # Puedes cambiarlo a 'starter' para evitar que se apague
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: XTREAM_URL
+        sync: false # El usuario lo pondrá en el dashboard de Render
+      - key: XTREAM_USER
+        sync: false
+      - key: XTREAM_PASS
+        sync: false
+
+  # Frontend (Vite)
+  - type: web
+    name: shadow-tv-frontend
+    env: static
+    rootDir: web
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: shadow-tv-backend
+          type: web
+          property: host
