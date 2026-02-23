@@ -1,0 +1,25 @@
+:root {
+    --rich-black: #050505;
+    --eerie-black: #0f0f0f;
+    --netflix-red: #e50914;
+    --accent-red: #ff3c3c;
+    --text-main: #ffffff;
+    --text-muted: #a3a3a3;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.8);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--rich-black);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
