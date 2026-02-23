@@ -19,8 +19,9 @@ services:
         sync: false
 
   # Frontend (Static Site/Vite)
-  - type: static
+  - type: web
     name: shadow-tv-frontend
+    env: static
     rootDir: web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
