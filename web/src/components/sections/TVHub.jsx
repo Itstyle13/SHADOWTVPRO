@@ -243,12 +243,13 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     padding: 0 40px 40px;
                     gap: 20px;
                     min-height: 0;
+                    overflow: hidden;
                     justify-content: flex-start;
                 }
 
                 .tv-categories-pane {
                     width: 220px;
-                    height: 100%;
+                    align-self: stretch;
                     display: flex;
                     flex-direction: column;
                     background: rgba(0, 0, 0, 0.6);
@@ -257,6 +258,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     border: 1px solid rgba(255, 255, 255, 0.1);
                     padding: 12px;
                     min-height: 0;
+                    overflow: hidden;
                 }
 
                 .pane-title {
@@ -301,7 +303,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .tv-channels-pane {
                     width: 220px;
-                    height: 100%;
+                    align-self: stretch;
                     background: rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
                     border-radius: 12px;
@@ -309,6 +311,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     display: flex;
                     flex-direction: column;
                     min-height: 0;
+                    overflow: hidden;
                     padding: 12px;
                 }
 
@@ -321,7 +324,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .tv-channels-pane .grid-area {
                     flex: 1;
-                    overflow-y: auto !important;
+                    min-height: 0;
+                    overflow: hidden;
                 }
 
                 /* Sobrescribir estilos de StreamGrid para TVHub */
