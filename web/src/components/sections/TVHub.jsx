@@ -250,6 +250,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     padding: 0 40px 40px;
                     gap: 20px;
                     min-height: 0;
+                    height: 0; /* Force flex child to be exactly the size defined by flex:1 */
                     overflow: hidden;
                     justify-content: flex-start;
                 }
@@ -320,6 +321,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     min-height: 0;
                     overflow: hidden;
                     padding: 12px;
+                    position: relative; /* Base for absolute grid and children */
                 }
 
                 .tv-channels-pane .content-list {
@@ -327,6 +329,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     display: flex;
                     flex-direction: column;
                     min-height: 0;
+                    height: 100%;
+                    width: 100%;
                 }
 
                 .tv-channels-pane .grid-area {

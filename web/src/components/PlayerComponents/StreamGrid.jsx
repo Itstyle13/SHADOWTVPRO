@@ -80,7 +80,7 @@ const StreamGrid = ({
                 )}
             </div>
 
-            <div className="grid-area" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <div className="grid-area" style={{ flex: 1, minHeight: 0, position: 'relative', width: '100%' }}>
                 <AutoSizer>
                     {({ height, width }) => {
                         console.log(`[AutoSizer] Height: ${height}, Width: ${width}`);
@@ -88,7 +88,7 @@ const StreamGrid = ({
                         if (filteredStreams.length === 0) {
                             return (
                                 <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                                    <div className="no-channels-msg">
+                                    <div className="no-channels-msg" style={{ width: '100%', textAlign: 'center' }}>
                                         {searchQuery ? 'No se encontraron canales' : 'Cargando canales...'}
                                     </div>
                                 </div>
@@ -104,10 +104,12 @@ const StreamGrid = ({
                                 itemSize={54}
                                 width={width}
                                 itemData={{ filteredStreams, currentStream, playStream }}
-                                overscanCount={5}
+                                style={{ outline: 'none' }}
+                                overscanCount={10}
                             >
                                 {({ index, style, data }) => {
                                     const item = data.filteredStreams[index];
+                                    if (!item) return null;
                                     const isActive = (
                                         data.currentStream?.stream_id === item.stream_id ||
                                         data.currentStream?.series_id === item.series_id ||
@@ -118,7 +120,7 @@ const StreamGrid = ({
                                             item={item}
                                             isActive={isActive}
                                             playStream={data.playStream}
-                                            style={{ ...style, paddingRight: '12px' }}
+                                            style={{ ...style, paddingRight: '4px' }}
                                         />
                                     );
                                 }}
