@@ -82,16 +82,16 @@ const StreamGrid = ({
                 )}
             </div>
 
-            <div className="grid-area" style={{ flex: 1, minHeight: 0, position: 'relative', width: '100%' }}>
+            <div className="grid-area" style={{ flex: 1, height: '100%', minHeight: 0, position: 'relative', width: '100%' }}>
                 <AutoSizer>
                     {({ height, width }) => {
                         console.log(`[AutoSizer] Height: ${height}, Width: ${width}`);
 
                         if (filteredStreams.length === 0 || externalLoading) {
                             return (
-                                <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                                    <div className="no-channels-msg" style={{ width: '100%', textAlign: 'center' }}>
-                                        {externalLoading ? 'Cargando canales...' : (searchQuery ? 'No se encontraron canales' : 'No hay canales disponibles')}
+                                <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                    <div className="no-channels-msg" style={{ width: '100%', textAlign: 'center', fontSize: '1.2rem', fontWeight: '500' }}>
+                                        {externalLoading ? '⌛ Cargando canales...' : (searchQuery ? '🔍 No se encontraron canales' : '📺 No hay canales disponibles')}
                                     </div>
                                 </div>
                             );

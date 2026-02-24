@@ -170,7 +170,6 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             display: selectedType === 'live' ? 'block' : 'none',
             position: 'absolute',
             inset: 0,
-            pointerEvents: 'none',
             height: '100%',
             overflow: 'hidden'
         }}>
@@ -261,12 +260,12 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 .tv-hub-content {
                     display: flex;
                     flex: 1;
-                    padding: 0 40px 40px;
+                    padding: 0 20px 40px; /* Reduced side padding */
                     gap: 20px;
                     min-height: 0;
-                    height: calc(100% - 120px); /* Explicitly subtract header space */
+                    height: calc(100% - 120px);
                     overflow: hidden;
-                    justify-content: center;
+                    justify-content: flex-start; /* Aligned to the LEFT */
                     width: 100%;
                 }
 
