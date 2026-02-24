@@ -22,13 +22,10 @@ services:
   # Frontend (Static Site/Vite)
   - type: web
     name: shadow-tv-frontend
-    env: static
+    runtime: static
     rootDir: web
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        fromService:
-          name: shadow-tv-backend
-          type: web
-          property: host
+        value: https://shadow-tv-backend.onrender.com
