@@ -10,9 +10,9 @@ const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 class ContentController {
     async getCategories(request, reply) {
         const { type } = request.params;
-        const { username, xtream_password } = request.user;
+        const { xtream_url, username, xtream_password } = request.user;
         try {
-            return await xtreamService.getCategories(username, xtream_password, type);
+            return await xtreamService.getCategories(xtream_url, username, xtream_password, type);
         } catch (error) {
             console.error(`[CONTROLLER ERROR] Categorías (${type}):`, error.message);
             return reply.code(500).send({ error: 'Error al cargar categorías' });
@@ -22,9 +22,9 @@ class ContentController {
     async getStreams(request, reply) {
         const { type } = request.params;
         const { category_id } = request.query;
-        const { username, xtream_password } = request.user;
+        const { xtream_url, username, xtream_password } = request.user;
         try {
-            return await xtreamService.getStreams(username, xtream_password, category_id, type);
+            return await xtreamService.getStreams(xtream_url, username, xtream_password, category_id, type);
         } catch (error) {
             console.error(`[CONTROLLER ERROR] Streams (${type}):`, error.message);
             return reply.code(500).send({ error: 'Error al cargar streams' });
@@ -33,9 +33,9 @@ class ContentController {
 
     async getEPG(request, reply) {
         const { streamId } = request.params;
-        const { username, xtream_password } = request.user;
+        const { xtream_url, username, xtream_password } = request.user;
         try {
-            return await xtreamService.getEPG(username, xtream_password, streamId);
+            return await xtreamService.getEPG(xtream_url, username, xtream_password, streamId);
         } catch (error) {
             return reply.code(500).send({ error: 'Error EPG' });
         }
@@ -43,9 +43,9 @@ class ContentController {
 
     async getSeriesInfo(request, reply) {
         const { id } = request.params;
-        const { username, xtream_password } = request.user;
+        const { xtream_url, username, xtream_password } = request.user;
         try {
-            return await xtreamService.getSeriesInfo(username, xtream_password, id);
+            return await xtreamService.getSeriesInfo(xtream_url, username, xtream_password, id);
         } catch (error) {
             return reply.code(500).send({ error: 'Error Series Info' });
         }
@@ -98,8 +98,9 @@ class ContentController {
 
     async stream(request, reply) {
         const { type, id } = request.params;
-        const { username, xtream_password } = request.user;
-        const server = process.env.XTREAM_API_URL.replace(/\/$/, '');
+        const { xtream_url, username, xtream_password } = request.user;
+        if (!xtream_url) return reply.code(400).send({ error: 'Falta configurar servidor' });
+        const server = xtream_url.replace(/\/$/, '');
         const streamId = id.split('.')[0];
         const path = type === 'series' ? 'series' : (type === 'vod' ? 'movie' : 'live');
 
@@ -148,8 +149,9 @@ class ContentController {
 
     async transcode(request, reply) {
         const { type, id } = request.params;
-        const { username, xtream_password } = request.user;
-        const server = process.env.XTREAM_API_URL.replace(/\/$/, '');
+        const { xtream_url, username, xtream_password } = request.user;
+        if (!xtream_url) return reply.code(400).send({ error: 'Falta configurar servidor' });
+        const server = xtream_url.replace(/\/$/, '');
         const path = type === 'series' ? 'series' : (type === 'vod' ? 'movie' : 'live');
 
         // Limpiamos el ID: si viene con .mp4 al final (para engañar al browser), se lo quitamos

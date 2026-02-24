@@ -11,14 +11,10 @@ const httpsAgent = new https.Agent({
 const cache = new NodeCache({ stdTTL: 600 });
 
 class XtreamService {
-    constructor(baseUrl) {
-        this.baseUrl = baseUrl;
-    }
-
-    async authenticate(username, password) {
+    async authenticate(baseUrl, username, password) {
         try {
-            console.log(`[XTREAM] Intentando autenticar usuario: ${username}`);
-            const response = await axios.get(`${this.baseUrl}/player_api.php`, {
+            console.log(`[XTREAM] Intentando autenticar usuario: ${username} en ${baseUrl}`);
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username: username,
                     password: password
@@ -58,8 +54,8 @@ class XtreamService {
         }
     }
 
-    async getCategories(username, password, type = 'live') {
-        const cacheKey = `categories_${username}_${type}`;
+    async getCategories(baseUrl, username, password, type = 'live') {
+        const cacheKey = `categories_${baseUrl}_${username}_${type}`;
         const cachedData = cache.get(cacheKey);
 
         if (cachedData) {
@@ -69,7 +65,7 @@ class XtreamService {
 
         const action = type === 'series' ? 'get_series_categories' : (type === 'vod' ? 'get_vod_categories' : 'get_live_categories');
         try {
-            const response = await axios.get(`${this.baseUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
@@ -86,8 +82,8 @@ class XtreamService {
         }
     }
 
-    async getStreams(username, password, categoryId, type = 'live') {
-        const cacheKey = `streams_${username}_${type}_${categoryId || 'all'}`;
+    async getStreams(baseUrl, username, password, categoryId, type = 'live') {
+        const cacheKey = `streams_${baseUrl}_${username}_${type}_${categoryId || 'all'}`;
         const cachedData = cache.get(cacheKey);
 
         if (cachedData) {
@@ -100,7 +96,7 @@ class XtreamService {
             const params = { username, password, action };
             if (categoryId) params.category_id = categoryId;
 
-            const response = await axios.get(`${this.baseUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params,
                 httpsAgent
             });
@@ -113,14 +109,14 @@ class XtreamService {
         }
     }
 
-    async getEPG(username, password, streamId, limit = 5) {
-        const cacheKey = `epg_${streamId}`;
+    async getEPG(baseUrl, username, password, streamId, limit = 5) {
+        const cacheKey = `epg_${baseUrl}_${streamId}`;
         const cachedData = cache.get(cacheKey);
 
         if (cachedData) return cachedData;
 
         try {
-            const response = await axios.get(`${this.baseUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
@@ -142,14 +138,14 @@ class XtreamService {
         }
     }
 
-    async getSeriesInfo(username, password, seriesId) {
-        const cacheKey = `series_info_${seriesId}`;
+    async getSeriesInfo(baseUrl, username, password, seriesId) {
+        const cacheKey = `series_info_${baseUrl}_${seriesId}`;
         const cachedData = cache.get(cacheKey);
 
         if (cachedData) return cachedData;
 
         try {
-            const response = await axios.get(`${this.baseUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
@@ -173,4 +169,4 @@ class XtreamService {
     }
 }
 
-module.exports = new XtreamService(process.env.XTREAM_API_URL);
+module.exports = new XtreamService();

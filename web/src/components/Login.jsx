@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../config';
 
 const Login = () => {
+    const [xtreamUrl, setXtreamUrl] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -14,6 +15,7 @@ const Login = () => {
         try {
             // Usamos la constante centralizada
             const response = await axios.post(`${API_BASE}/auth/login`, {
+                xtreamUrl,
                 username,
                 password
             });
@@ -32,11 +34,20 @@ const Login = () => {
             <h2>IPTV LOGIN</h2>
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
                 <input
+                    type="url"
+                    placeholder="http://server.url:port"
+                    value={xtreamUrl}
+                    onChange={(e) => setXtreamUrl(e.target.value)}
+                    style={{ padding: '10px', background: '#333', border: '1px solid #555', color: '#fff' }}
+                    required
+                />
+                <input
                     type="text"
                     placeholder="Username"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     style={{ padding: '10px', background: '#333', border: '1px solid #555', color: '#fff' }}
+                    required
                 />
                 <input
                     type="password"
