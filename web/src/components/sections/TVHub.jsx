@@ -7,6 +7,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     const [streams, setStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [streamsLoading, setStreamsLoading] = useState(false); // New state for stream loading
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const hasReportedInitial = useRef(false);
@@ -20,11 +21,11 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             console.log(`[TVHub] Using cached streams for: ${categoryId}`);
             setStreams(streamCache.current[categoryId]);
             setSearchQuery('');
-            onStreamsUpdate(streamCache.current[categoryId]); // Ensure onStreamsUpdate is called for cached data
+            onStreamsUpdate(streamCache.current[categoryId]);
             return;
         }
 
-        setLoading(true);
+        setStreamsLoading(true); // Start loading streams
         try {
             const url = categoryId === 'all'
                 ? `${API_BASE}/streams/live`
@@ -38,7 +39,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             setStreams(res.data);
             setSearchQuery('');
             setError(null);
-            onStreamsUpdate(res.data); // Call onStreamsUpdate here
+            onStreamsUpdate(res.data);
 
             if (!hasReportedInitial.current) {
                 onDataLoaded?.('live', res.data);
@@ -47,14 +48,10 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
         } catch (err) {
             console.error("[TVHub] Error fetching streams:", err);
             setError('Error al cargar contenido');
-            if (!hasReportedInitial.current && categoryId === 'all') {
-                onDataLoaded?.('live', []);
-                hasReportedInitial.current = true;
-            }
         } finally {
-            setLoading(false);
+            setStreamsLoading(false); // Stop loading streams
         }
-    }, [API_BASE, token, onDataLoaded]);
+    }, [API_BASE, token, onStreamsUpdate, onDataLoaded]);
 
     const handleCategorySelect = useCallback(async (categoryId) => {
         setSelectedCategory(categoryId);
@@ -95,12 +92,14 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     }, [API_BASE, token, selectedCategory, handleCategorySelect, onDataLoaded]);
 
     const filteredStreams = useMemo(() => {
+        if (!streams) return [];
         if (!searchQuery) return streams;
         const query = searchQuery.toLowerCase();
-        return streams.filter(item =>
-            item.name?.toLowerCase().includes(query) ||
-            item.stream_id?.toString().includes(query)
-        );
+        return streams.filter(item => {
+            const name = item.name?.toLowerCase() || '';
+            const id = (item.stream_id || item.id || '').toString().toLowerCase();
+            return name.includes(query) || id.includes(query);
+        });
     }, [streams, searchQuery]);
 
     useEffect(() => {
@@ -167,7 +166,14 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     }
 
     return (
-        <div style={{ display: isFullscreen ? 'contents' : 'none' }}>
+        <div className="tv-hub-root" style={{
+            display: selectedType === 'live' ? 'block' : 'none',
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            height: '100%',
+            overflow: 'hidden'
+        }}>
             {(!showChannels && isFullscreen && showUI) && (
                 <div className="open-menu-btn" onClick={() => setShowChannels(true)} title="Abrir Pantalla de Canales">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="24" height="24">
@@ -208,6 +214,12 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     </div>
 
                     <div className="tv-channels-pane">
+                        {error && (
+                            <div className="error-msg-overlay">
+                                <span>⚠️ {error}</span>
+                                <button onClick={() => handleCategorySelect(selectedCategory || 'all')}>Reintentar</button>
+                            </div>
+                        )}
                         <StreamGrid
                             showChannels={true}
                             searchQuery={searchQuery}
@@ -215,6 +227,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                             filteredStreams={filteredStreams}
                             currentStream={currentStream}
                             playStream={handlePlayStream}
+                            token={token}
+                            loading={streamsLoading} // Pass loading state to grid
                         />
                     </div>
                 </div>
@@ -250,9 +264,10 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     padding: 0 40px 40px;
                     gap: 20px;
                     min-height: 0;
-                    height: 0; /* Force flex child to be exactly the size defined by flex:1 */
+                    height: calc(100% - 120px); /* Explicitly subtract header space */
                     overflow: hidden;
-                    justify-content: flex-start;
+                    justify-content: center;
+                    width: 100%;
                 }
 
                 .tv-categories-pane {
@@ -310,7 +325,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 }
 
                 .tv-channels-pane {
-                    width: 220px;
+                    flex: 1; /* Permitir que crezca */
+                    max-width: 600px; /* Evitar que sea demasiado ancho */
                     align-self: stretch;
                     background: rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
@@ -321,7 +337,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     min-height: 0;
                     overflow: hidden;
                     padding: 12px;
-                    position: relative; /* Base for absolute grid and children */
+                    position: relative;
                 }
 
                 .tv-channels-pane .content-list {
@@ -365,6 +381,28 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 }
                 .tv-channels-pane .grid-area::-webkit-scrollbar-track {
                     background: rgba(255, 255, 255, 0.05);
+                }
+
+                .error-msg-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10;
+                    gap: 15px;
+                    color: #ff4444;
+                    font-weight: bold;
+                }
+                .error-msg-overlay button {
+                    background: #3b82f6;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
                 }
 
                 .back-btn {

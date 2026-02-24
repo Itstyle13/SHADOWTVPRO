@@ -4,7 +4,7 @@ import CategorySidebar from './CategorySidebar';
 import { List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 
-const StreamRow = memo(({ item, isActive, playStream, style }) => {
+const StreamRow = memo(({ item, isActive, playStream, style, token }) => {
     if (!item) return null;
     return (
         <div style={style}>
@@ -14,7 +14,7 @@ const StreamRow = memo(({ item, isActive, playStream, style }) => {
             >
                 <div className="channel-logo-box">
                     <img
-                        src={item.stream_icon || item.cover ? `${API_BASE}/api/proxy-icon?url=${encodeURIComponent(item.stream_icon || item.cover)}&name=${encodeURIComponent(item.name || '')}` : "/src/logo_splash.png"}
+                        src={item.stream_icon || item.cover ? `${API_BASE}/api/proxy-icon?url=${encodeURIComponent(item.stream_icon || item.cover)}&name=${encodeURIComponent(item.name || '')}${token ? `&token=${token}` : ''}` : "/src/logo_splash.png"}
                         alt=""
                         loading="lazy"
                         onError={(e) => { e.target.src = "/src/logo_splash.png"; }}
@@ -38,7 +38,9 @@ const StreamGrid = ({
     categories = [],
     selectedCategory,
     handleCategorySelect,
-    categoriesRef
+    categoriesRef,
+    token,
+    loading: externalLoading
 }) => {
     // Debugging logs to console
     console.log(`[StreamGrid] filteredStreams: ${filteredStreams?.length}, showChannels: ${showChannels}, selected: ${selectedCategory}`);
@@ -85,11 +87,11 @@ const StreamGrid = ({
                     {({ height, width }) => {
                         console.log(`[AutoSizer] Height: ${height}, Width: ${width}`);
 
-                        if (filteredStreams.length === 0) {
+                        if (filteredStreams.length === 0 || externalLoading) {
                             return (
                                 <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
                                     <div className="no-channels-msg" style={{ width: '100%', textAlign: 'center' }}>
-                                        {searchQuery ? 'No se encontraron canales' : 'Cargando canales...'}
+                                        {externalLoading ? 'Cargando canales...' : (searchQuery ? 'No se encontraron canales' : 'No hay canales disponibles')}
                                     </div>
                                 </div>
                             );
@@ -103,7 +105,7 @@ const StreamGrid = ({
                                 itemCount={filteredStreams.length}
                                 itemSize={54}
                                 width={width}
-                                itemData={{ filteredStreams, currentStream, playStream }}
+                                itemData={{ filteredStreams, currentStream, playStream, token }}
                                 style={{ outline: 'none' }}
                                 overscanCount={10}
                             >
@@ -121,6 +123,7 @@ const StreamGrid = ({
                                             isActive={isActive}
                                             playStream={data.playStream}
                                             style={{ ...style, paddingRight: '4px' }}
+                                            token={data.token}
                                         />
                                     );
                                 }}

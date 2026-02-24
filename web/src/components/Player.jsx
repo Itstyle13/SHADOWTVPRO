@@ -265,6 +265,11 @@ const Player = () => {
         navigationHandlers.current = { ...navigationHandlers.current, ...handlers };
     }, []);
 
+    // Memoize onStreamsUpdate to prevent unnecessary re-renders of Hubs
+    const handleStreamsUpdate = useCallback((list) => {
+        setActiveStreamList(list);
+    }, []);
+
     // Pre-mount ALL sections at startup to completely eliminate loading times when switching tabs (user request)
     const [mountedSections, setMountedSections] = useState({
         live: true,
@@ -285,11 +290,7 @@ const Player = () => {
             setNavigationHandlers,
             showChannels, setShowChannels,
             isFullscreen, showUI,
-            onStreamsUpdate: (list) => {
-                setActiveStreamList(list);
-                // Si no hay lista principal cargada (sidebar), la actualizamos también
-                if (mainStreams.length === 0) setMainStreams(list);
-            },
+            onStreamsUpdate: handleStreamsUpdate,
             onDataLoaded: handleDataLoaded,
             selectedType
         };
