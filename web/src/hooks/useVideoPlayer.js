@@ -169,10 +169,10 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 cors: true
             }, {
                 enableWorker: true,
-                enableStashBuffer: false, // Entregar datos al MSE inmediatamente, sin pausa de buffering
+                enableStashBuffer: false,
                 autoCleanupSourceBuffer: true,
                 fixAudioTimestampGap: true,
-                liveBufferLatencyChasing: false, // Evitar microsaltos
+                liveBufferLatencyChasing: false,
                 lowLatencyMode: false,
                 lazyLoad: false,
             });
@@ -183,13 +183,11 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             if (autoPlay) {
                 player.play().catch(e => {
                     console.warn("[VideoPlayer] Autoplay bloqueado por el navegador o error de audio:", e);
-                    // No silenciamos automáticamente aquí para evitar que el usuario se quede sin sonido "fantasma"
-                    // Si el navegador bloquea el play con sonido, el usuario verá el botón de play
                 });
             }
 
-            player.on(mpegts.Events.ERROR, (type, detail, data) => {
-                const isFormatError = type === mpegts.ErrorTypes.MEDIA_ERROR ||
+            player.on(mpegts.Events.ERROR, (errorType, detail, data) => {
+                const isFormatError = errorType === mpegts.ErrorTypes.MEDIA_ERROR ||
                     detail === mpegts.ErrorDetails.FORMAT_ERROR;
 
                 if (isFormatError && !attempts.hls) {
@@ -197,8 +195,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                     cleanupPlayers();
                     startHls();
                 } else {
-                    console.error("[VideoPlayer] Error MPEG-TS crítico:", type, detail);
-                    // Si falla el load, forzar reintento desde el watchdog o manualmente
+                    console.error("[VideoPlayer] Error MPEG-TS crítico:", errorType, detail);
                     if (detail === mpegts.ErrorDetails.NETWORK_ERROR || isFormatError) {
                         reinit();
                     }
@@ -215,10 +212,10 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             if (Hls.isSupported()) {
                 const hls = new Hls({
                     enableWorker: true,
-                    // Desactivar colchones artificiales que causan pausa inicial. HLS manejará un pequeño buffer interno continuo.
-                    manifestLoadingMaxRetry: 15,
-                    levelLoadingMaxRetry: 15,
-                    lowLatencyMode: false,
+                    manifestLoadingMaxRetry: 10,
+                    levelLoadingMaxRetry: 10,
+                    lowLatencyMode: true, // Modo Baja Latencia Comercial
+                    liveSyncDurationCount: 3,
                     backBufferLength: 30
                 });
                 hls.loadSource(url);
@@ -238,7 +235,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.warn("[VideoPlayer] Error de medios HLS. Intentando recuperación automática...");
+                                console.warn("[VideoPlayer] Error de medios HLS. Intentando recuperación...");
                                 hls.recoverMediaError();
                                 break;
                             case Hls.ErrorTypes.NETWORK_ERROR:
@@ -262,7 +259,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
         const handleLoadEnd = () => {
             console.log(`[VideoPlayer] Reproducción activa: ${activeStreamKey}`);
             callbacks.onLoadEnd?.();
-            startWatchdog(); // Iniciar vigilancia cuando empieza a reproducir
+            startWatchdog();
         };
 
         const handleWaiting = () => {
@@ -273,9 +270,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             const error = videoElement.current?.error;
             if (error) {
                 console.error(`[VideoPlayer] Error de elemento video: ${error.code} - ${error.message}`);
-                // Si el error es de decodificación (3) o formato no soportado (4), forzar reintento con transcodificación
                 if ((error.code === 3 || error.code === 4) && (type === 'vod' || type === 'series')) {
-                    console.warn("[VideoPlayer] Error de decodificación/formato detectado. Forzando transcodificación.");
                     if (retryCountRef.current < 2) retryCountRef.current = 2;
                 }
                 reinit();
@@ -293,10 +288,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 const duration = video.duration;
                 callbacks.onDurationChange?.(duration);
 
-                // Si es VOD/Series y la duración es ridículamente corta (ej: 59s para una película), 
-                // probablemente el stream está corrupto o mal detectado. Forzar transcode.
                 if ((type === 'vod' || type === 'series') && duration > 0 && duration < 120) {
-                    console.warn(`[VideoPlayer] Duración sospechosa detectada: ${duration}s. Forzando transcode...`);
                     if (retryCountRef.current < 2) retryCountRef.current = 2; // Saltar a transcode
                     reinit();
                 }
@@ -315,7 +307,6 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             if (!isMounted || isInitializingRef.current) return;
             isInitializingRef.current = true;
 
-            // 1. Limpieza agresiva antes de iniciar
             cleanupPlayers();
             stopWatchdog();
 
@@ -327,7 +318,6 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 video.muted = isMuted;
                 if (video.volume === 0) video.volume = 1;
 
-                // Si hay una posición de reanudación, prepararla
                 if (resumePosition > 0) {
                     const handleOnce = () => {
                         video.currentTime = resumePosition;
@@ -340,28 +330,25 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             if (callbacks.onLoadStart) callbacks.onLoadStart();
 
             const streamPath = (stream.url || activeStreamKey || '').toString().toLowerCase();
-            console.log(`[VideoPlayer] Init -> Type: ${type} | Key: ${activeStreamKey}`);
 
             try {
                 if (type === 'vod' || type === 'series') {
                     startNative();
                 }
-                else if (streamPath.includes('.m3u8')) {
-                    startHls();
-                }
-                else if (streamPath.includes('.ts') || type === 'live') {
+                else if (streamPath.includes('.ts')) {
+                    // Solo usar MPEG-TS si explícitamente termina en .ts
                     await startMpegTs();
                 }
                 else {
-                    startNative();
+                    // Por defecto, intentar HLS para Live TV, ya que el backend genera un .m3u8 proxy
+                    startHls();
                 }
 
-                // INICIAR WATCHDOG AQUÍ para cubrir fallos en el proceso de carga inicial
                 startWatchdog();
             } catch (err) {
                 console.error("[VideoPlayer] Error durante la inicialización:", err);
                 if (type === 'vod' || type === 'series') startNative();
-                else if (type === 'live') await startMpegTs();
+                else if (type === 'live') startHls();
                 startWatchdog();
             } finally {
                 isInitializingRef.current = false;

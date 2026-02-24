@@ -248,6 +248,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .tv-categories-pane {
                     width: 220px;
+                    height: 100%;
                     display: flex;
                     flex-direction: column;
                     background: rgba(0, 0, 0, 0.6);
@@ -300,6 +301,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .tv-channels-pane {
                     width: 220px;
+                    height: 100%;
                     background: rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
                     border-radius: 12px;

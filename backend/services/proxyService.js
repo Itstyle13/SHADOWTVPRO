@@ -4,7 +4,7 @@ const { PassThrough } = require('stream');
 const imageCache = require('./imageCache');
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
-const FALLBACK_ICON = 'https://img.icons8.com/ios-filled/100/ffffff/television.png';
+
 
 async function fetchIcon(url, name, reply) {
     // 1. Intentar desde Caché Local primero
@@ -74,11 +74,13 @@ async function fetchIcon(url, name, reply) {
             return reply.send(clientStream);
         }
 
-        console.warn(`[PROXY-ICON] Sin imagen encontrada para: ${name}. Redirigiendo a fallback.`);
-        return reply.redirect(FALLBACK_ICON);
+        console.warn(`[PROXY-ICON] Sin imagen encontrada para: ${name}. Devolviendo vacío.`);
+        // Devolver 204 No Content para que el navegador use el fallback CSS/src del <img>
+        // y no realice un redirect hacia una URL externa potencialmente caída.
+        return reply.code(204).send();
     } catch (error) {
         console.error(`[PROXY-ICON ERROR CRÍTICO]: ${error.message}`);
-        return reply.redirect(FALLBACK_ICON);
+        return reply.code(204).send();
     }
 }
 
