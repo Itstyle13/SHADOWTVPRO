@@ -40,6 +40,9 @@ const StreamGrid = ({
     handleCategorySelect,
     categoriesRef
 }) => {
+    // Debugging logs to console
+    console.log(`[StreamGrid] filteredStreams: ${filteredStreams?.length}, showChannels: ${showChannels}, selected: ${selectedCategory}`);
+
     return (
         <div className={`content-list ${showChannels ? 'visible' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Categorías Horizontales */}
@@ -77,35 +80,51 @@ const StreamGrid = ({
                 )}
             </div>
 
-            <div className="grid-area" style={{ flex: 1, minHeight: 0 }}>
+            <div className="grid-area" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 <AutoSizer>
-                    {({ height, width }) => (
-                        <List
-                            height={height}
-                            itemCount={filteredStreams.length}
-                            itemSize={54}
-                            width={width}
-                            itemData={{ filteredStreams, currentStream, playStream }}
-                            overscanCount={5}
-                        >
-                            {({ index, style, data }) => {
-                                const item = data.filteredStreams[index];
-                                const isActive = (
-                                    data.currentStream?.stream_id === item.stream_id ||
-                                    data.currentStream?.series_id === item.series_id ||
-                                    data.currentStream?.id === item.id
-                                );
-                                return (
-                                    <StreamRow
-                                        item={item}
-                                        isActive={isActive}
-                                        playStream={data.playStream}
-                                        style={{ ...style, paddingRight: '12px' }}
-                                    />
-                                );
-                            }}
-                        </List>
-                    )}
+                    {({ height, width }) => {
+                        console.log(`[AutoSizer] Height: ${height}, Width: ${width}`);
+
+                        if (filteredStreams.length === 0) {
+                            return (
+                                <div style={{ height, width, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                                    <div className="no-channels-msg">
+                                        {searchQuery ? 'No se encontraron canales' : 'Cargando canales...'}
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        if (height <= 0 || width <= 0) return null;
+
+                        return (
+                            <List
+                                height={height}
+                                itemCount={filteredStreams.length}
+                                itemSize={54}
+                                width={width}
+                                itemData={{ filteredStreams, currentStream, playStream }}
+                                overscanCount={5}
+                            >
+                                {({ index, style, data }) => {
+                                    const item = data.filteredStreams[index];
+                                    const isActive = (
+                                        data.currentStream?.stream_id === item.stream_id ||
+                                        data.currentStream?.series_id === item.series_id ||
+                                        data.currentStream?.id === item.id
+                                    );
+                                    return (
+                                        <StreamRow
+                                            item={item}
+                                            isActive={isActive}
+                                            playStream={data.playStream}
+                                            style={{ ...style, paddingRight: '12px' }}
+                                        />
+                                    );
+                                }}
+                            </List>
+                        );
+                    }}
                 </AutoSizer>
             </div>
         </div>

@@ -15,30 +15,37 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     const streamCache = useRef({});
 
     const fetchStreams = useCallback(async (categoryId) => {
+        console.log(`[TVHub] Fetching streams for category: ${categoryId}`);
         if (streamCache.current[categoryId]) {
+            console.log(`[TVHub] Using cached streams for: ${categoryId}`);
             setStreams(streamCache.current[categoryId]);
             setSearchQuery('');
+            onStreamsUpdate(streamCache.current[categoryId]); // Ensure onStreamsUpdate is called for cached data
             return;
         }
 
         setLoading(true);
-        setSearchQuery('');
         try {
             const url = categoryId === 'all'
                 ? `${API_BASE}/streams/live`
                 : `${API_BASE}/streams/live?category_id=${categoryId}`;
+
+            console.log(`[TVHub] Requesting URL: ${url}`);
             const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+            console.log(`[TVHub] Streams received: ${res.data?.length || 0}`);
 
             streamCache.current[categoryId] = res.data;
             setStreams(res.data);
+            setSearchQuery('');
             setError(null);
+            onStreamsUpdate(res.data); // Call onStreamsUpdate here
 
             if (!hasReportedInitial.current) {
                 onDataLoaded?.('live', res.data);
                 hasReportedInitial.current = true;
             }
         } catch (err) {
-            console.error("Error loading streams:", err);
+            console.error("[TVHub] Error fetching streams:", err);
             setError('Error al cargar contenido');
             if (!hasReportedInitial.current && categoryId === 'all') {
                 onDataLoaded?.('live', []);
