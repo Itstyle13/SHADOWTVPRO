@@ -1,23 +1,28 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, memo } from 'react';
 import { API_BASE } from '../../config';
 import CategorySidebar from './CategorySidebar';
+import { List } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 
-const StreamRow = React.memo(({ item, isActive, playStream }) => {
+const StreamRow = memo(({ item, isActive, playStream, style }) => {
+    if (!item) return null;
     return (
-        <div
-            className={`channel-card ${isActive ? 'active' : ''}`}
-            onClick={() => playStream(item, item.stream_type || 'live')}
-        >
-            <div className="channel-logo-box">
-                <img
-                    src={item.stream_icon || item.cover ? `${API_BASE}/api/proxy-icon?url=${encodeURIComponent(item.stream_icon || item.cover)}&name=${encodeURIComponent(item.name || '')}` : "/src/logo_splash.png"}
-                    alt=""
-                    loading="lazy"
-                    onError={(e) => { e.target.src = "/src/logo_splash.png"; }}
-                />
-            </div>
-            <div className="channel-name-text">
-                {item.name}
+        <div style={style}>
+            <div
+                className={`channel-card ${isActive ? 'active' : ''}`}
+                onClick={() => playStream(item, item.stream_type || 'live')}
+            >
+                <div className="channel-logo-box">
+                    <img
+                        src={item.stream_icon || item.cover ? `${API_BASE}/api/proxy-icon?url=${encodeURIComponent(item.stream_icon || item.cover)}&name=${encodeURIComponent(item.name || '')}` : "/src/logo_splash.png"}
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => { e.target.src = "/src/logo_splash.png"; }}
+                    />
+                </div>
+                <div className="channel-name-text">
+                    {item.name}
+                </div>
             </div>
         </div>
     );
@@ -35,16 +40,8 @@ const StreamGrid = ({
     handleCategorySelect,
     categoriesRef
 }) => {
-    const scrollRef = useRef(null);
-
-    const scrollBy = useCallback((pages) => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollBy({ top: pages * 78 * 5, behavior: 'smooth' });
-        }
-    }, []);
-
     return (
-        <div className={`content-list ${showChannels ? 'visible' : ''}`}>
+        <div className={`content-list ${showChannels ? 'visible' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Categorías Horizontales */}
             {categories.length > 0 && (
                 <CategorySidebar
@@ -80,25 +77,39 @@ const StreamGrid = ({
                 )}
             </div>
 
-            <div className="grid-area" ref={scrollRef}>
-                {filteredStreams.map((item, index) => {
-                    const isActive = (
-                        currentStream?.stream_id === item.stream_id ||
-                        currentStream?.series_id === item.series_id ||
-                        currentStream?.id === item.id
-                    );
-                    return (
-                        <StreamRow
-                            key={item.stream_id || item.series_id || item.id || index}
-                            item={item}
-                            isActive={isActive}
-                            playStream={playStream}
-                        />
-                    );
-                })}
+            <div className="grid-area" style={{ flex: 1, minHeight: 0 }}>
+                <AutoSizer>
+                    {({ height, width }) => (
+                        <List
+                            height={height}
+                            itemCount={filteredStreams.length}
+                            itemSize={54}
+                            width={width}
+                            itemData={{ filteredStreams, currentStream, playStream }}
+                            overscanCount={5}
+                        >
+                            {({ index, style, data }) => {
+                                const item = data.filteredStreams[index];
+                                const isActive = (
+                                    data.currentStream?.stream_id === item.stream_id ||
+                                    data.currentStream?.series_id === item.series_id ||
+                                    data.currentStream?.id === item.id
+                                );
+                                return (
+                                    <StreamRow
+                                        item={item}
+                                        isActive={isActive}
+                                        playStream={data.playStream}
+                                        style={{ ...style, paddingRight: '12px' }}
+                                    />
+                                );
+                            }}
+                        </List>
+                    )}
+                </AutoSizer>
             </div>
         </div>
     );
 };
 
-export default React.memo(StreamGrid);
+export default memo(StreamGrid);

@@ -12,8 +12,15 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     const hasReportedInitial = useRef(false);
 
     const categoriesRef = useRef(null);
+    const streamCache = useRef({});
 
     const fetchStreams = useCallback(async (categoryId) => {
+        if (streamCache.current[categoryId]) {
+            setStreams(streamCache.current[categoryId]);
+            setSearchQuery('');
+            return;
+        }
+
         setLoading(true);
         setSearchQuery('');
         try {
@@ -21,6 +28,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 ? `${API_BASE}/streams/live`
                 : `${API_BASE}/streams/live?category_id=${categoryId}`;
             const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+
+            streamCache.current[categoryId] = res.data;
             setStreams(res.data);
             setError(null);
 
