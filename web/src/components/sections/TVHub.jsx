@@ -337,6 +337,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     display: flex;
                     flex-direction: column;
                     min-height: 0;
+                    height: 100%;
                     overflow: hidden;
                     padding: 12px;
                     position: relative;

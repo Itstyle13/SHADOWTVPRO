@@ -46,7 +46,7 @@ const StreamGrid = ({
     console.log(`[StreamGrid] filteredStreams: ${filteredStreams?.length}, showChannels: ${showChannels}, selected: ${selectedCategory}`);
 
     return (
-        <div className={`content-list ${showChannels ? 'visible' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className={`content-list ${showChannels ? 'visible' : ''}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
             {/* Categorías Horizontales */}
             {categories.length > 0 && (
                 <CategorySidebar
