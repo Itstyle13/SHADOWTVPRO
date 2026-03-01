@@ -31,6 +31,8 @@ body {
   width: 100vw;
   background: #000;
   overflow: hidden;
+  position: relative;
+  /* Para que los hijos absolutos como TVHub se posicionen correctamente */
 }
 
 .player-layout>* {

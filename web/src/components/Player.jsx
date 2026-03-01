@@ -93,6 +93,7 @@ const Player = () => {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const uiTimeoutRef = useRef(null);
+    const layoutRef = useRef(null);
 
     // Check Expiration & Load Last Channel
     useEffect(() => {
@@ -190,8 +191,8 @@ const Player = () => {
         } else {
             setCurrentEPG(null);
             // Entrar en fullscreen automáticamente para películas y series si se solicita y es posible
-            if (autoFs && containerRef.current && !document.fullscreenElement) {
-                containerRef.current.requestFullscreen().catch(() => {
+            if (autoFs && layoutRef.current && !document.fullscreenElement) {
+                layoutRef.current.requestFullscreen().catch(() => {
                     // Silenciamos este error ya que suele ser por falta de gesto del usuario
                 });
             }
@@ -206,8 +207,8 @@ const Player = () => {
     };
 
     const handleFullscreen = () => {
-        if (containerRef.current) {
-            if (!document.fullscreenElement) containerRef.current.requestFullscreen();
+        if (layoutRef.current) {
+            if (!document.fullscreenElement) layoutRef.current.requestFullscreen();
             else document.exitFullscreen();
         }
     };
@@ -317,7 +318,7 @@ const Player = () => {
     };
 
     return (
-        <div ref={containerRef} className={`player-layout ${isFullscreen ? 'layout-fullscreen' : ''}`} onMouseMove={handleMouseMove}>
+        <div className={`player-layout ${isFullscreen ? 'layout-fullscreen' : ''}`} ref={layoutRef}>
 
             {/* Header Area */}
             {!isFullscreen && (

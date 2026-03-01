@@ -171,7 +171,9 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             position: 'absolute',
             inset: 0,
             height: '100%',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            pointerEvents: 'auto',
+            zIndex: 1500
         }}>
             {(!showChannels && isFullscreen && showUI) && (
                 <div className="open-menu-btn" onClick={() => setShowChannels(true)} title="Abrir Pantalla de Canales">
@@ -324,8 +326,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 }
 
                 .tv-channels-pane {
-                    flex: 1; /* Permitir que crezca */
-                    max-width: 600px; /* Evitar que sea demasiado ancho */
+                    flex: 1;
                     align-self: stretch;
                     background: rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(20px);
