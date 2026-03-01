@@ -183,57 +183,59 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 </div>
             )}
 
-            <div className="tv-hub-overlay" style={{ display: showChannels ? 'flex' : 'none' }}>
-                <div className="tv-hub-header">
-                    <div className="back-btn" onClick={handleBackToHome}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="18" height="18">
-                            <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-                        </svg>
-                        <span>INICIO</span>
-                    </div>
-                    <div className="global-close-btn" onClick={() => setShowChannels(false)} title="Cerrar Menú">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="22" height="22">
-                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                    </div>
-                </div>
-
-                <div className="tv-hub-content">
-                    <div className="tv-categories-pane">
-                        <h2 className="pane-title">Categorías</h2>
-                        <div className="vertical-category-list" ref={categoriesRef}>
-                            {categories.map(cat => (
-                                <div
-                                    key={cat.category_id}
-                                    className={`category-vertical-item ${selectedCategory === cat.category_id ? 'active' : ''}`}
-                                    onClick={() => handleCategorySelect(cat.category_id)}
-                                >
-                                    {cat.category_name}
-                                </div>
-                            ))}
+            {showChannels && (
+                <div className="tv-hub-overlay">
+                    <div className="tv-hub-header">
+                        <div className="back-btn" onClick={handleBackToHome}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="18" height="18">
+                                <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+                            </svg>
+                            <span>INICIO</span>
+                        </div>
+                        <div className="global-close-btn" onClick={() => setShowChannels(false)} title="Cerrar Menú">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="22" height="22">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
                         </div>
                     </div>
 
-                    <div className="tv-channels-pane">
-                        {error && (
-                            <div className="error-msg-overlay">
-                                <span>⚠️ {error}</span>
-                                <button onClick={() => handleCategorySelect(selectedCategory || 'all')}>Reintentar</button>
+                    <div className="tv-hub-content">
+                        <div className="tv-categories-pane">
+                            <h2 className="pane-title">Categorías</h2>
+                            <div className="vertical-category-list" ref={categoriesRef}>
+                                {categories.map(cat => (
+                                    <div
+                                        key={cat.category_id}
+                                        className={`category-vertical-item ${selectedCategory === cat.category_id ? 'active' : ''}`}
+                                        onClick={() => handleCategorySelect(cat.category_id)}
+                                    >
+                                        {cat.category_name}
+                                    </div>
+                                ))}
                             </div>
-                        )}
-                        <StreamGrid
-                            showChannels={true}
-                            searchQuery={searchQuery}
-                            setSearchQuery={setSearchQuery}
-                            filteredStreams={filteredStreams}
-                            currentStream={currentStream}
-                            playStream={handlePlayStream}
-                            token={token}
-                            loading={streamsLoading} // Pass loading state to grid
-                        />
+                        </div>
+
+                        <div className="tv-channels-pane">
+                            {error && (
+                                <div className="error-msg-overlay">
+                                    <span>⚠️ {error}</span>
+                                    <button onClick={() => handleCategorySelect(selectedCategory || 'all')}>Reintentar</button>
+                                </div>
+                            )}
+                            <StreamGrid
+                                showChannels={true}
+                                searchQuery={searchQuery}
+                                setSearchQuery={setSearchQuery}
+                                filteredStreams={filteredStreams}
+                                currentStream={currentStream}
+                                playStream={handlePlayStream}
+                                token={token}
+                                loading={streamsLoading} // Pass loading state to grid
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             <style>{`
                 .tv-hub-overlay {
