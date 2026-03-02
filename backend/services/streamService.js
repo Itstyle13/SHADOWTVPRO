@@ -1,4 +1,5 @@
 const axios = require('axios');
+const https = require('https');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const { signUrl, resolveUrl, getProxyBase } = require('../utils/urlHelper');
@@ -9,13 +10,29 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const AGENT = 'VLC/3.0.12 LibVLC/3.0.12';
 const formatCache = new Map();
 
+// Agente HTTPS compartido con Keep-Alive — reutiliza la TCP connection con el servidor Xtream
+// Definido aquí para ser exportado y usado también por contentController
+const sharedHttpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+    keepAlive: true,
+    keepAliveMsecs: 60000,
+    maxSockets: 20,
+    maxFreeSockets: 10,
+});
+
+// Mantener compatibilidad con código existente
+const httpsAgent = sharedHttpsAgent;
+
 /**
- * Reescribe un manifiesto M3U8 para que los segmentos pasen por el proxy.
+ * Reescribe un manifiesto M3U8 para que los segmentos pasen por el proxy del backend.
+ * Esto es necesario porque el servidor Xtream no envía headers CORS,
+ * por lo que el browser no puede descargar segmentos directamente desde otro origen.
  */
 function rewriteM3U8(body, baseUrl, proxyBase, token) {
     return body.split('\n').map(line => {
         const t = line.trim();
 
+        // Líneas de metadatos con URI (ej: #EXT-X-KEY) → proxiar también
         if (t.startsWith('#') && t.includes('URI="')) {
             return t.replace(/URI="([^"]+)"/g, (_, uri) => {
                 const full = resolveUrl(uri, baseUrl);
@@ -25,8 +42,10 @@ function rewriteM3U8(body, baseUrl, proxyBase, token) {
             });
         }
 
+        // Líneas vacías o comentarios → sin cambios
         if (!t || t.startsWith('#')) return line;
 
+        // Segmentos → pasar por el proxy del backend (evita bloqueo CORS del browser)
         const full = resolveUrl(t, baseUrl);
         const enc = Buffer.from(full).toString('base64url');
         const sig = signUrl(full);

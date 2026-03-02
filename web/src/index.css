@@ -1058,3 +1058,233 @@ body {
   height: 100%;
   width: 100%;
 }
+
+/* =========================================================================
+   MEDIA QUERIES - DISEÑO RESPONSIVO
+   =========================================================================*/
+@media screen and (max-width: 1024px) {
+  .layout-col-left {
+    width: 90px;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 16px 0;
+  }
+
+  .layout-col-right {
+    width: 300px;
+  }
+
+  .movie-sidebar {
+    width: 180px;
+  }
+
+  .movie-content-area {
+    padding: 20px;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .player-layout {
+    flex-direction: column;
+  }
+
+  .layout-col-left {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 70px;
+    flex-direction: row;
+    background: #000;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+  }
+
+  .sidebar-main {
+    flex-direction: row;
+    padding: 0;
+    height: 100%;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .header-logo-area,
+  .sidebar-footer,
+  .top-bar {
+    display: none !important;
+  }
+
+  .layout-col-center {
+    padding-left: 0;
+    height: 35vh;
+    min-height: 250px;
+    flex: none;
+  }
+
+  .layout-col-right {
+    width: 100vw;
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 80px;
+    /* Evitar que el menú tape el reproductor de canales */
+  }
+
+  /* Ajustes a Hub de Series y Películas */
+  .movie-hub-container,
+  .series-hub-container {
+    padding-bottom: 70px;
+  }
+
+  .movie-hub-body {
+    flex-direction: column !important;
+  }
+
+  .movie-top-nav {
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .movie-top-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .movie-search-container {
+    min-width: 100%;
+  }
+
+  .movie-sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .sidebar-header {
+    display: none;
+  }
+
+  .categories-scroll-area {
+    display: flex;
+    flex-direction: row;
+    margin: 0;
+    padding: 0;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .movie-category-item {
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  .movie-content-area {
+    padding: 15px;
+  }
+
+  .movie-poster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 12px;
+  }
+
+  .current-category-title {
+    font-size: 1.2rem;
+  }
+}
+
+
+/* Modo Horizontal en Móviles (Landscape) */
+@media screen and (max-width: 950px) and (orientation: landscape) {
+  .player-layout {
+    flex-direction: row;
+  }
+
+  .layout-col-left {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 70px;
+    height: 100vh;
+    flex-direction: column;
+    z-index: 1000;
+  }
+
+  .header-logo-area {
+    display: none !important;
+  }
+
+  .sidebar-main {
+    flex-direction: column;
+    padding-top: 20px;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-item {
+    padding: 15px 0;
+    justify-content: center;
+  }
+
+  .movie-poster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 15px;
+  }
+
+  .layout-col-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 40% !important;
+    min-width: 310px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+  }
+
+  .sidebar-header {
+    display: none;
+  }
+
+  .layout-col-center {
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+  }
+
+  /* Si Series o VOD esta abrierto pantalla completa, toma todo */
+  .movie-hub-container,
+  .series-hub-container {
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    padding-bottom: 0;
+    padding-left: 70px;
+  }
+
+  .movie-top-nav {
+    padding: 10px 20px;
+  }
+
+  .movie-search-container {
+    min-width: 180px;
+  }
+
+  .movie-sidebar {
+    width: 200px;
+  }
+}

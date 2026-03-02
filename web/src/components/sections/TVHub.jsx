@@ -3,6 +3,16 @@ import axios from 'axios';
 import StreamGrid from '../PlayerComponents/StreamGrid';
 
 const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, setNavigationHandlers, isFullscreen, showUI, onStreamsUpdate, showChannels, setShowChannels, onDataLoaded, selectedType }) => {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 1440 || window.innerHeight <= 600);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 1440 || window.innerHeight <= 600);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const [categories, setCategories] = useState([]);
     const [streams, setStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -189,9 +199,27 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             )}
 
             {(!isFullscreen || showChannels) && (
-                <div className={`tv-hub-overlay ${isFullscreen ? 'fullscreen-overlay' : ''}`}>
+                <div
+                    className={`tv-hub-overlay ${isFullscreen ? 'fullscreen-overlay' : ''}`}
+                    style={isMobile && isFullscreen ? {
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 'auto',
+                        bottom: 0,
+                        width: '50vw',
+                        height: '100vh',
+                        maxWidth: '50vw',
+                        background: 'rgba(0, 0, 0, 0.96)',
+                        zIndex: 99999,
+                        display: 'flex',
+                        flexDirection: 'column'
+                    } : {}}
+                >
                     {/* Buscador global a lo ancho del overlay completo */}
-                    <div className="search-bar-global-container">
+                    <div className="search-bar-global-container"
+                        style={isMobile ? { padding: '8px 12px 4px 12px' } : {}}
+                    >
                         <input
                             id="tvhub-search-input"
                             type="text"
@@ -205,20 +233,50 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                             }}
                             className="tvhub-search-input"
                             autoComplete="off"
+                            style={isMobile ? { padding: '7px 10px', fontSize: '0.85rem' } : {}}
                         />
                     </div>
 
-                    <div className="tv-hub-content">
+                    <div
+                        className="tv-hub-content"
+                        style={isMobile && isFullscreen ? { flexDirection: 'row', flex: 1, height: 0, minHeight: 0, overflow: 'auto' } : {}}
+                    >
 
-                        {/* Panel de Categorías (Visible junto a canales en fs o por defecto si se requiere) */}
-                        <div className="tv-categories-pane" style={{ display: isFullscreen ? 'flex' : 'none' }}>
-                            {isFullscreen && <div className="fs-pane-title">Categorías</div>}
-                            <div className="vertical-category-list" ref={categoriesRef}>
+                        {/* Panel de Categorías */}
+                        <div
+                            className="tv-categories-pane"
+                            style={{
+                                display: isFullscreen ? 'flex' : 'none',
+                                ...(isMobile && isFullscreen ? {
+                                    flex: 'none',
+                                    width: '150px',
+                                    minWidth: '130px',
+                                    height: '100%',
+                                    overflowY: 'auto',
+                                    overflowX: 'hidden',
+                                    borderRight: '1px solid rgba(255,255,255,0.08)',
+                                    boxSizing: 'border-box',
+                                    flexDirection: 'column',
+                                } : {})
+                            }}
+                        >
+                            {!isMobile && isFullscreen && <div className="fs-pane-title">Categorías</div>}
+                            <div
+                                className="vertical-category-list"
+                                ref={categoriesRef}
+                            >
                                 {categories.map(cat => (
                                     <div
                                         key={cat.category_id}
                                         className={`category-vertical-item ${selectedCategory === cat.category_id ? 'active' : ''}`}
                                         onClick={() => handleCategorySelect(cat.category_id)}
+                                        style={isMobile && isFullscreen ? {
+                                            padding: '8px 6px',
+                                            fontSize: '0.65rem',
+                                            lineHeight: '1.5',
+                                            margin: 0,
+                                            display: 'block',
+                                        } : {}}
                                     >
                                         <span className="cat-name">{cat.category_name}</span>
                                     </div>
@@ -227,9 +285,20 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                         </div>
 
                         {/* Canales */}
-                        <div className="tv-channels-pane">
-
-                            <div className="fs-pane-title">Lista de canales</div>
+                        <div
+                            className="tv-channels-pane"
+                            style={isMobile && isFullscreen ? {
+                                flex: 1,
+                                minWidth: 0,
+                                height: '100%',
+                                minHeight: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                                padding: '0 0 0 4px'
+                            } : {}}
+                        >
+                            {!isMobile && <div className="fs-pane-title">Lista de canales</div>}
 
                             {error && (
                                 <div className="error-msg-overlay">
@@ -247,7 +316,6 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                                 token={token}
                                 loading={streamsLoading}
                             />
-
 
                         </div>
                     </div>
@@ -280,7 +348,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     bottom: 0;
                     left: 0;
                     right: auto;
-                    width: 700px; /* Ancho suficiente para menú categorías (350) + canales (350) */
+                    width: 700px;
                     background: rgba(10, 10, 10, 0.85); /* Fondo semitransparente general */
                     z-index: 10000; /* Sobre el reproductor fijo 9999 */
                     animation: slideInLeft 0.3s ease-out;
@@ -499,6 +567,87 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .vertical-category-list::-webkit-scrollbar { width: 4px; }
                 .vertical-category-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+                /* -- Responsive TV Hub para Móviles -- */
+                @media screen and (max-width: 1440px), screen and (max-height: 600px) {
+                    /* Overlay ocupa 50% izquierdo en móvil */
+                    .tv-hub-overlay.fullscreen-overlay {
+                        width: 50vw;
+                        max-width: 50vw;
+                        left: 0;
+                        right: auto;
+                    }
+
+                    /* Categorías: columna izquierda más estrecha en fullscreen móvil */
+                    .tv-categories-pane {
+                        width: 150px !important;
+                        min-width: 130px !important;
+                        flex: none !important;
+                        border-right: 1px solid rgba(255,255,255,0.08) !important;
+                        border-bottom: none !important;
+                        background: none !important;
+                    }
+
+                    .fs-pane-title {
+                        font-size: 0.75rem !important;
+                        padding: 10px 8px 6px 10px !important;
+                    }
+
+                    .vertical-category-list {
+                        padding: 4px 4px 8px 4px !important;
+                        gap: 2px !important;
+                    }
+
+                    .category-vertical-item {
+                        padding: 9px 6px !important;
+                        font-size: 0.63rem !important;
+                        line-height: 1.5 !important;
+                        border-radius: 6px !important;
+                        overflow: visible !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        box-sizing: border-box !important;
+                    }
+
+                    .category-vertical-item .cat-name {
+                        overflow: hidden !important;
+                        text-overflow: ellipsis !important;
+                        white-space: nowrap !important;
+                        display: block !important;
+                        max-width: 100% !important;
+                    }
+
+                    /* Canales: columna derecha con logos más pequeños */
+                    .channel-card-xuper {
+                        padding: 4px 6px 4px 5px !important;
+                        margin-bottom: 2px !important;
+                        border-radius: 6px !important;
+                    }
+
+                    .channel-logo-container-xuper {
+                        width: 24px !important;
+                        height: 24px !important;
+                        margin-right: 7px !important;
+                        border-radius: 4px !important;
+                        flex-shrink: 0 !important;
+                    }
+
+                    .channel-name-text-xuper {
+                        font-size: 0.58rem !important;
+                        letter-spacing: 0 !important;
+                        line-height: 1.2 !important;
+                    }
+
+                    /* Buscador compacto */
+                    .search-bar-global-container {
+                        padding: 6px 10px 4px 10px !important;
+                    }
+
+                    .tvhub-search-input {
+                        padding: 6px 10px !important;
+                        font-size: 0.8rem !important;
+                    }
+                }
             `}</style>
         </div>
     );

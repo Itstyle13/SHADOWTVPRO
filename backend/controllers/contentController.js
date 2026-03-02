@@ -5,7 +5,17 @@ const { getProxyBase } = require('../utils/urlHelper');
 const axios = require('axios');
 const https = require('https');
 
-const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+// Agente HTTPS con Keep-Alive persistente.
+// Esto hace que el backend REUTILICE la misma TCP connection al servidor Xtream
+// en vez de abrir una nueva por cada solicitud de segmento HLS.
+// El reseller panel verá solo UNA conexión en lugar de múltiples.
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false,
+    keepAlive: true,          // Mantener la conexión TCP abierta
+    keepAliveMsecs: 60000,    // Mantener viva por 60 segundos entre solicitudes
+    maxSockets: 20,           // Máximo de sockets simultáneos al mismo servidor
+    maxFreeSockets: 10,       // Cuántos sockets libres mantener en el pool
+});
 
 class ContentController {
     async getCategories(request, reply) {
@@ -105,42 +115,74 @@ class ContentController {
         const path = type === 'series' ? 'series' : (type === 'vod' ? 'movie' : 'live');
 
         try {
-            const cached = streamService.formatCache.get(streamId);
-            if (type === 'live' && cached && (Date.now() - cached.timestamp < 5000)) {
-                if (cached.format === 'mpegts') {
-                    const finalUrl = `${server}/${path}/${username}/${xtream_password}/${id}`;
-                    return streamService.serveDirectStream(finalUrl, id.split('.')[1] || 'ts', request, reply, type, httpsAgent);
-                }
-                if (cached.format === 'hls' && cached.body) {
-                    return reply.type('application/vnd.apple.mpegurl').header('X-Cache', 'HIT').send(cached.body);
-                }
-            }
-
             if (type === 'live') {
-                const m3u8Url = `${server}/${path}/${username}/${xtream_password}/${streamId}.m3u8`;
+                const m3u8Url = `${server}/live/${username}/${xtream_password}/${streamId}.m3u8`;
+                const cached = streamService.formatCache.get(streamId);
+                const now = Date.now();
+                const cacheAgeMs = cached ? (now - cached.timestamp) : Infinity;
+
+                // Caché del playlist m3u8: 20s fresco, hasta 40s sirve stale + refresh en background.
+                // Esto evita fetches repetidos al servidor para cada refresh de HLS.js.
+                if (cached && cached.format === 'hls' && cached.body) {
+                    if (cacheAgeMs < 20000) {
+                        return reply.type('application/vnd.apple.mpegurl')
+                            .header('Cache-Control', 'no-cache')
+                            .send(cached.body);
+                    }
+                    if (cacheAgeMs < 40000) {
+                        // Servir inmediato + actualizar en background
+                        setImmediate(async () => {
+                            try {
+                                const res = await axios.get(m3u8Url, {
+                                    headers: { 'User-Agent': 'VLC/3.0.12 LibVLC/3.0.12' },
+                                    httpsAgent, responseType: 'text', timeout: 8000
+                                });
+                                const body = String(res.data);
+                                if (body.includes('#EXTM3U')) {
+                                    const finalUrl = res.request?.res?.responseUrl || m3u8Url;
+                                    const base = finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1);
+                                    const rewritten = streamService.rewriteM3U8(body, base, getProxyBase(request), request.query.token || '');
+                                    streamService.formatCache.set(streamId, { format: 'hls', body: rewritten, timestamp: Date.now() });
+                                }
+                            } catch (_) { }
+                        });
+                        return reply.type('application/vnd.apple.mpegurl')
+                            .header('Cache-Control', 'no-cache')
+                            .send(cached.body);
+                    }
+                }
+
+                // Sin caché válido → fetch sincrónico (solo la primera vez al cambiar de canal)
                 try {
                     const res = await axios.get(m3u8Url, {
                         headers: { 'User-Agent': 'VLC/3.0.12 LibVLC/3.0.12' },
-                        httpsAgent, responseType: 'text', timeout: 5000
+                        httpsAgent, responseType: 'text', timeout: 8000
                     });
                     const body = String(res.data);
                     if (body.includes('#EXTM3U')) {
                         const finalUrl = res.request?.res?.responseUrl || m3u8Url;
-                        const rewritten = streamService.rewriteM3U8(body, finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1), getProxyBase(request), request.query.token || '');
+                        const base = finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1);
+                        // rewriteM3U8 ahora escribe URLs DIRECTAS al servidor Xtream para segmentos
+                        const rewritten = streamService.rewriteM3U8(body, base, getProxyBase(request), request.query.token || '');
                         streamService.formatCache.set(streamId, { format: 'hls', body: rewritten, timestamp: Date.now() });
                         return reply.type('application/vnd.apple.mpegurl').send(rewritten);
                     }
-                } catch (e) { /* fallback a MPEG-TS si falla HLS */ }
-                streamService.formatCache.set(streamId, { format: 'mpegts', timestamp: Date.now() });
+                } catch (e) {
+                    console.warn('[STREAM] HLS falló, intentando MPEG-TS:', e.message);
+                }
+
+                // Fallback MPEG-TS directo
+                const tsUrl = `${server}/live/${username}/${xtream_password}/${streamId}.ts`;
+                return streamService.serveDirectStream(tsUrl, 'ts', request, reply, type, httpsAgent);
             }
 
+            // VOD y Series → proxy normal
             const cleanId = id.endsWith('.mp4') && id.includes('.', id.length - 5) ? id.replace(/\.mp4$/, '') : id;
-            const ext = cleanId.includes('.') ? cleanId.split('.').pop() : (type === 'live' ? 'ts' : 'mp4');
-            const streamIdOnly = cleanId.split('.')[0];
-            const targetUrl = `${server}/${path}/${username}/${xtream_password}/${cleanId}${cleanId.includes('.') ? '' : (type === 'live' ? '.ts' : '.mp4')}`;
-            console.log(`[STREAM] Requesting ${type.toUpperCase()}: ${targetUrl}`);
-
+            const ext = cleanId.includes('.') ? cleanId.split('.').pop() : 'mp4';
+            const targetUrl = `${server}/${path}/${username}/${xtream_password}/${cleanId}${cleanId.includes('.') ? '' : '.mp4'}`;
+            console.log(`[STREAM] Proxying ${type.toUpperCase()}: ${targetUrl}`);
             return streamService.serveDirectStream(targetUrl, ext, request, reply, type, httpsAgent);
+
         } catch (error) {
             console.error(`[STREAM ERROR]: ${error.message}`);
             return reply.code(500).send({ error: 'Stream no disponible' });

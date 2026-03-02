@@ -157,14 +157,16 @@ const Player = () => {
         return () => document.removeEventListener('fullscreenchange', handleFsChange);
     }, [selectedType]);
 
-    // UI Auto-Hide
+    // UI Auto-Hide: ocultar controles tras 3s sin movimiento cuando hay stream activo
     const handleMouseMove = useCallback(() => {
         setShowUI(true);
         if (uiTimeoutRef.current) clearTimeout(uiTimeoutRef.current);
-        uiTimeoutRef.current = setTimeout(() => {
-            if (isFullscreen) setShowUI(false);
-        }, 3000);
-    }, [isFullscreen]);
+        if (currentStream) {
+            uiTimeoutRef.current = setTimeout(() => {
+                setShowUI(false);
+            }, 3000);
+        }
+    }, [currentStream]);
 
     const handlePlayStream = useCallback((stream, type, autoFs = true) => {
         setSelectedType(type);
@@ -174,6 +176,11 @@ const Player = () => {
         setIsPlaying(true);
         setAudioTracks([]);
         setSubtitleTracks([]);
+
+        // Mostrar controles brevemente al cambiar de canal y luego ocultarlos
+        setShowUI(true);
+        if (uiTimeoutRef.current) clearTimeout(uiTimeoutRef.current);
+        uiTimeoutRef.current = setTimeout(() => setShowUI(false), 3000);
 
         localStorage.setItem('lastWatchedStream', JSON.stringify(stream));
         localStorage.setItem('lastWatchedType', type);
@@ -331,29 +338,13 @@ const Player = () => {
                             <span className="nav-icon">📺</span>
                             <span className="nav-label">TV</span>
                         </div>
-                        <div className={`nav-item ${selectedType === 'destacados' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
-                            <span className="nav-icon">👍</span>
-                            <span className="nav-label">DESTACADOS</span>
-                        </div>
                         <div className={`nav-item ${selectedType === 'vod' ? 'active' : ''}`} onClick={() => handleSetType('vod')}>
                             <span className="nav-icon">🎬</span>
-                            <span className="nav-label">PELÍCULA</span>
+                            <span className="nav-label">PELÍCULAS</span>
                         </div>
                         <div className={`nav-item ${selectedType === 'series' ? 'active' : ''}`} onClick={() => handleSetType('series')}>
-                            <span className="nav-icon">📺</span>
+                            <span className="nav-icon">🎭</span>
                             <span className="nav-label">SERIES</span>
-                        </div>
-                        <div className={`nav-item ${selectedType === 'kids' ? 'active' : ''}`} onClick={() => handleSetType('vod')}>
-                            <span className="nav-icon">👶</span>
-                            <span className="nav-label">KIDS</span>
-                        </div>
-                        <div className={`nav-item ${selectedType === 'anime' ? 'active' : ''}`} onClick={() => handleSetType('series')}>
-                            <span className="nav-icon">🐼</span>
-                            <span className="nav-label">ANIME</span>
-                        </div>
-                        <div className={`nav-item ${selectedType === 'explorar' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
-                            <span className="nav-icon">🧭</span>
-                            <span className="nav-label">EXPLORAR</span>
                         </div>
                     </div>
 
@@ -471,7 +462,9 @@ const Player = () => {
                     inset: isFullscreen ? 0 : 'auto',
                     pointerEvents: (isFullscreen && (!showChannels || (selectedType !== 'vod' && selectedType !== 'series'))) ? 'none' : 'auto', // evitamos bloqueos de clicks si el video está visible
                     width: isFullscreen ? '100%' : undefined,
-                    background: isFullscreen ? 'transparent' : '#000'
+                    background: isFullscreen ? 'transparent' : '#000',
+                    backdropFilter: isFullscreen && (!showChannels || (selectedType === 'live' && showChannels)) ? 'none' : undefined,
+                    WebkitBackdropFilter: isFullscreen && (!showChannels || (selectedType === 'live' && showChannels)) ? 'none' : undefined
                 }}
             >
                 {renderSection()}

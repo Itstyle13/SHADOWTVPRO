@@ -3,8 +3,13 @@ const https = require('https');
 const NodeCache = require('node-cache');
 
 // Agente para ignorar certificados SSL no válidos (común en servidores IPTV)
+// keepAlive: true para reutilizar TCP connections y reducir conexiones en el panel del reseller
 const httpsAgent = new https.Agent({
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
+    keepAlive: true,
+    keepAliveMsecs: 60000,
+    maxSockets: 10,
+    maxFreeSockets: 5,
 });
 
 // Cache TTL: 10 minutes for categories/streams, 24 hours for auth validation

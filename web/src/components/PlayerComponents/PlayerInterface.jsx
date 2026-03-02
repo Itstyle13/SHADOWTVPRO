@@ -79,9 +79,17 @@ const PlayerInterface = forwardRef(({
 
             {children}
 
-            {/* Controles SOLO en pantalla completa, aparecen al mover el mouse */}
-            {isFullscreen && (
-                <div className={`player-controls-bottom ${showUI ? 'controls-visible' : ''}`}>
+            {/* Controles del reproductor: aparecen al mover el mouse, se ocultan tras 3s */}
+            {currentStream && (
+                <div
+                    className={`player-controls-bottom ${showUI ? 'controls-visible' : ''}`}
+                    style={showChannels ? {
+                        left: 'auto',
+                        right: '16px',
+                        transform: 'none',
+                        zIndex: 100001,
+                    } : { zIndex: 100001 }}
+                >
                     {/* Barra de progreso para VOD/Series */}
                     {(selectedType === 'vod' || selectedType === 'series') && duration > 0 && (
                         <div className="vod-progress-container">
@@ -214,34 +222,38 @@ const PlayerInterface = forwardRef(({
 
                 .player-controls-bottom {
                     position: absolute;
-                    bottom: 30px;
-                    left: 40px;
-                    right: 40px;
-                    background: rgba(0,0,0,0.7);
-                    backdrop-filter: blur(20px);
-                    padding: 20px 30px;
-                    border-radius: 24px;
-                    border: 1px solid rgba(255,255,255,0.1);
+                    bottom: 16px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0,0,0,0.55);
+                    backdrop-filter: blur(12px);
+                    padding: 10px 18px;
+                    border-radius: 40px;
+                    border: 1px solid rgba(255,255,255,0.08);
                     display: flex;
                     flex-direction: column;
-                    gap: 15px;
-                    z-index: 50;
+                    gap: 10px;
+                    z-index: 99998;
                     opacity: 0;
                     pointer-events: none;
-                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-                    transform: none; /* Asegurar que no hay desplazamiento lateral */
+                    transition: opacity 0.4s ease;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                    white-space: nowrap;
                 }
 
                 .player-controls-bottom.controls-visible {
                     opacity: 1;
                     pointer-events: auto;
-                    bottom: 40px;
+                }
+
+                .player-controls-bottom:hover {
+                    opacity: 1;
+                    pointer-events: auto;
                 }
 
                 .controls-row {
                     display: flex;
-                    gap: 15px;
+                    gap: 10px;
                     align-items: center;
                     justify-content: center;
                 }
@@ -307,7 +319,7 @@ const PlayerInterface = forwardRef(({
                 }
 
                 .nav-btn.small-btn {
-                    width: 38px; height: 38px;
+                    width: 32px; height: 32px;
                     background: rgba(255,255,255,0.08);
                     border-radius: 50%;
                     display: flex;
