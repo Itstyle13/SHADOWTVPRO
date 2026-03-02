@@ -238,63 +238,83 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none' }}>
             <div className="movie-sidebar">
                 <div className="sidebar-header">
-                    <div className="logo-section" style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                        <div className="video-icon" style={{
-                            width: '100px', height: '70px', border: '2.5px solid white',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px'
-                        }}>
-                            <svg viewBox="0 0 24 24" fill="white" width="50" height="50">
-                                <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V4h-4z" />
-                            </svg>
-                        </div>
+                    <div className="logo-section" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', paddingTop: '10px' }}>
+                        <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z" />
+                            <path d="m6.2 5.3 3.1 3.9" />
+                            <path d="m12.4 3.4 3.1 4" />
+                            <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+                        </svg>
                     </div>
-                    <button className="sidebar-btn" onClick={handleBack}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="18" height="18">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                        Atras
-                    </button>
-                    <div className="sidebar-btn" onClick={() => document.getElementById('seriesSearch').focus()}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
-                            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                        Busca
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 10px', marginBottom: '10px' }}>
+                        <button onClick={handleBack} style={{ padding: '0', background: 'transparent', border: 'none', color: '#ccc', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', cursor: 'pointer' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                            Atras
+                        </button>
+                        <button onClick={() => document.getElementById('seriesSearch')?.focus()} style={{ padding: '0', background: 'transparent', border: 'none', color: '#ccc', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', cursor: 'pointer' }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            Busca
+                        </button>
                     </div>
                 </div>
 
                 <div className="categories-scroll-area" ref={categoriesRef}>
-                    <div className={`movie-category-item ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => setSelectedCategory('all')}>
-                        <span>ALL</span>
-                        <span className="category-count">{allStreams.length}</span>
+                    <div className="movie-category-item" style={{ background: 'transparent', borderLeft: 'none', color: '#ccc' }}>
+                        <span>Visto recientemente</span>
+                        <span className="category-count" style={{ background: 'transparent' }}>0</span>
                     </div>
-                    <div className="movie-category-item">
+                    <div
+                        className={`movie-category-item ${selectedCategory === 'all' ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory('all')}
+                        style={{
+                            background: selectedCategory === 'all' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                            borderLeft: 'none',
+                            color: selectedCategory === 'all' ? '#ffd700' : '#ccc'
+                        }}
+                    >
+                        <span>ALL</span>
+                        <span className="category-count" style={{ color: selectedCategory === 'all' ? '#ffd700' : '#ccc', background: 'transparent' }}>{allStreams.length}</span>
+                    </div>
+                    <div className="movie-category-item" style={{ background: 'transparent', borderLeft: 'none', color: '#ccc' }}>
                         <span>Favorito</span>
-                        <span className="category-count">0</span>
+                        <span className="category-count" style={{ background: 'transparent' }}>0</span>
                     </div>
                     {categories.map(cat => (
                         <div
                             key={cat.category_id}
                             className={`movie-category-item ${selectedCategory === cat.category_id ? 'active' : ''}`}
                             onClick={() => setSelectedCategory(cat.category_id)}
+                            style={{
+                                background: selectedCategory === cat.category_id ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                                borderLeft: 'none',
+                                color: selectedCategory === cat.category_id ? '#fff' : '#ccc'
+                            }}
                         >
-                            <span>{cat.category_name}</span>
-                            <span className="category-count">{cat.count}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: '#ff9800', fontSize: '10px' }}>▶</span>
+                                {cat.category_name}
+                            </span>
+                            <span className="category-count" style={{ background: 'transparent' }}>{cat.count}</span>
                         </div>
                     ))}
                 </div>
             </div>
 
             <div className="movie-content-area" ref={contentAreaRef} onScroll={handleScroll}>
-                <div className="movie-top-bar">
-                    <div className="sort-dropdown-series" onClick={() => setShowSort(!showSort)}>
+                <div className="movie-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div className="sort-dropdown" onClick={() => setShowSort(!showSort)} style={{ position: 'relative', cursor: 'pointer', background: '#66537a', padding: '10px 20px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         {SORT_LABELS[sortBy]}
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                             <path d="M6 9l6 6 6-6" />
                         </svg>
                         {showSort && (
-                            <div className="sort-options-series">
+                            <div className="sort-options" style={{ top: '100%', left: 0, marginTop: '5px' }}>
                                 {Object.entries(SORT_LABELS).map(([key, label]) => (
-                                    <div key={key} className="sort-option-series" onClick={(e) => { e.stopPropagation(); setSortBy(key); setShowSort(false); }}>
+                                    <div key={key} className="sort-option" onClick={(e) => { e.stopPropagation(); setSortBy(key); setShowSort(false); }}>
                                         {label}
                                     </div>
                                 ))}
@@ -302,20 +322,17 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         )}
                     </div>
 
-                    <div className="category-header-info" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div className="search-box-premium" style={{ position: 'relative' }}>
-                            <input
-                                id="seriesSearch"
-                                type="text"
-                                placeholder="Buscar serie..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '10px 20px', borderRadius: '10px', color: 'white', outline: 'none', width: '250px' }}
-                            />
-                        </div>
-                        <h2 className="current-category-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ color: '#ff9800' }}>▶</span> {currentCategoryName} <span style={{ color: '#ff9800' }}>▶</span> ({filteredStreams.length})
-                        </h2>
+                    {/* Manteniendo input oculto para no romper lógica, aunque el buscador global esté en TVHub */}
+                    <input
+                        id="seriesSearch"
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ display: 'none' }}
+                    />
+
+                    <div style={{ fontSize: '24px', color: '#fff' }}>
+                        {currentCategoryName === 'TODO' ? 'ALL' : currentCategoryName}({filteredStreams.length})
                     </div>
                 </div>
 
@@ -324,11 +341,12 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         const iconUrl = item.cover || item.stream_icon;
                         const proxiedIcon = iconUrl ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(iconUrl)}&name=${encodeURIComponent(item.name || '')}` : "/logo_splash.png";
                         return (
-                            <div key={item.series_id || item.stream_id} className="movie-card-premium" onClick={() => handleSelectSeries(item)}>
-                                <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} />
-                                <div className="movie-card-overlay">
-                                    <div className="movie-card-title">{item.name}</div>
-                                    <div className="movie-card-info">{item.last_modified ? new Date(item.last_modified * 1000).getFullYear() : (item.name.match(/\((19|20)\d{2}\)/) ? item.name.match(/\((19|20)\d{2}\)/)[0].replace(/[()]/g, '') : '')}</div>
+                            <div key={item.series_id || item.stream_id} className="movie-card-premium" onClick={() => handleSelectSeries(item)} style={{ background: '#3b3b58', padding: 0, border: 'none', display: 'flex', flexDirection: 'column' }}>
+                                <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} style={{ width: '100%', height: 'calc(100% - 40px)', objectFit: 'cover', borderRadius: '12px 12px 0 0' }} />
+                                <div style={{ height: '40px', padding: '0 10px', display: 'flex', alignItems: 'center', background: '#3b3b58', borderRadius: '0 0 12px 12px' }}>
+                                    <div className="movie-card-title" style={{ fontSize: '13px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
+                                        {item.name}
+                                    </div>
                                 </div>
                             </div>
                         );

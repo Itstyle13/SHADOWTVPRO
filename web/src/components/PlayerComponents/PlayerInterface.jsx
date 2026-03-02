@@ -122,6 +122,17 @@ const PlayerInterface = forwardRef(({
                                 <polygon points="5 4 15 12 5 20 5 4" /><rect x="17" y="4" width="2" height="16" />
                             </svg>
                         </div>
+                        {selectedType === 'live' && (
+                            <div className="nav-btn small-btn" onClick={() => {
+                                setShowChannels(true);
+                                setTimeout(() => {
+                                    const searchInput = document.getElementById('tvhub-search-input');
+                                    if (searchInput) searchInput.focus();
+                                }, 100);
+                            }} title="Buscar Canales">
+                                <span style={{ fontSize: '15px' }}>🔍</span>
+                            </div>
+                        )}
                         <div className="nav-btn small-btn" onClick={() => setShowChannels(prev => !prev)} title="Ver Canales">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
                                 <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />

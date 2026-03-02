@@ -22,47 +22,95 @@ body {
   height: 100vh;
 }
 
-/* --- Layout Principal --- */
+/* =========================================================================
+   2. DISEÑO PRINCIPAL (LAYOUT) - Estilo Xuper TV
+   =========================================================================*/
+/* Layout general de la aplicación */
 .player-layout {
-  display: grid;
-  grid-template-columns: 200px 1fr 300px;
-  grid-template-rows: 64px 1fr 80px;
-  height: 100vh;
+  display: flex;
+  flex-direction: row;
   width: 100vw;
-  background: #000;
+  height: 100vh;
+  background-color: #000000;
   overflow: hidden;
+  color: #fff;
+}
+
+/* --- Columnas del Nuevo Layout --- */
+.layout-col-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  /* Transparente para superponer al video/fondo */
+  border-right: none;
+  z-index: 60;
+  /* Asegurar que flote sobre el video central */
+  pointer-events: none;
+  /* Dejar pasar clics si hay area vacia */
+}
+
+.layout-col-left>* {
+  pointer-events: auto;
+  /* Reactivar clics en los elementos del menu */
+}
+
+.layout-col-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   position: relative;
-  /* Para que los hijos absolutos como TVHub se posicionen correctamente */
-}
-
-.player-layout>* {
   min-width: 0;
-  min-height: 0;
+  padding-left: 20px;
+  /* Reducido para que la interface base quede más cerca y las letras se superpongan un poco al video o fondo */
 }
 
-.layout-fullscreen {
-  grid-template-columns: 0 1fr 0;
-  grid-template-rows: 0 1fr 0;
+.layout-col-center.fullscreen-active {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
 }
+
+.layout-col-right {
+  width: 350px;
+  height: 100%;
+  position: relative;
+  flex-shrink: 0;
+  background: #000;
+}
+
+/* Modo Fullscreen (ya no oculta elementos per se en CSS, lo maneja React JSX) */
+/* .layout-fullscreen used dynamically but no specific extra styles needed if relative base handles it */
 
 /* --- Logo Superior Izquierdo --- */
 .header-logo-area {
-  grid-column: 1;
-  grid-row: 1;
+  position: relative;
+  height: 100px;
+  /* Mas grande para acomodarlo a la nueva maqueta */
   display: flex;
   align-items: center;
-  padding: 0 30px;
+  justify-content: center;
+  padding: 10px 0;
 }
 
 /* --- Top Bar (Iconos Derecha) --- */
 .top-bar {
-  grid-column: 2 / 4;
-  grid-row: 1;
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 70px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 40px;
+  padding: 0 20px;
   gap: 25px;
+  z-index: 50;
+  /* Sobre el video */
 }
 
 .status-icons-group {
@@ -78,28 +126,34 @@ body {
   font-weight: 400;
 }
 
-/* --- Sidebar (Lista Vertical con Texto) --- */
+/* --- Sidebar Izquierdo (Menú Principal) --- */
 .sidebar-main {
-  grid-column: 1;
-  grid-row: 2;
+  position: relative;
+  width: 100%;
+  flex: 1;
+  /* Ocupar area media del col-left */
+  background: transparent;
   display: flex;
   flex-direction: column;
-  padding-top: 30px;
+  justify-content: center;
+  /* Centrado vertical */
+  padding-top: 10px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 16px 28px;
+  padding: 16px 24px;
+  /* Mayor padding vertical */
   gap: 16px;
-  color: var(--text-dim);
-  font-weight: 600;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
+  color: #a0a0a0;
+  /* Grisáceo similar a la captura */
+  font-weight: 700;
+  font-size: 1.1rem;
+  /* Texto más grande */
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s ease;
-  border-left: 3px solid transparent;
   position: relative;
 }
 
@@ -110,8 +164,9 @@ body {
 
 .nav-item.active {
   color: #ffffff;
-  border-left: 3px solid var(--neon-blue);
-  background: rgba(59, 130, 246, 0.08);
+  /* Blanco al estar seleccionado */
+  /* Remove border left and add text shadow for glow effect if needed */
+  background: transparent;
 }
 
 .nav-icon {
@@ -119,6 +174,8 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  font-size: 1.4rem;
+  /* Iconos más grandes */
 }
 
 .nav-item.active .nav-icon svg {
@@ -127,19 +184,23 @@ body {
 }
 
 .nav-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 1.5px;
+  font-size: 0.95rem;
+  /* Letras más grandes */
+  font-weight: 700;
+  letter-spacing: 1.2px;
 }
 
-/* --- Sidebar Footer (Botones Inferiores) --- */
+/* --- Sidebar Footer (Botones Inferiores Izquierdos) --- */
 .sidebar-footer {
-  grid-column: 1;
-  grid-row: 3;
+  margin-top: auto;
+  padding-bottom: 30px;
+  width: 100%;
+  background: transparent;
   display: flex;
-  align-items: flex-end;
-  padding: 0 30px 40px;
-  gap: 20px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
 }
 
 .footer-btn {
@@ -161,31 +222,21 @@ body {
   color: #fff;
 }
 
-/* --- Main Area (Video) --- */
+/* Contenedor del video: Ocupa el centro */
 .video-container {
-  grid-column: 2;
-  grid-row: 2 / 4;
+  flex: 1;
+  /* Ocupa el espacio restante entre menús */
   position: relative;
-  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  min-width: 0;
-  margin: 12px 16px 24px 10px;
-  border-radius: 14px;
-  border: 2px solid #3b82f6;
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.15);
-  transition: border 0.3s, box-shadow 0.3s, border-radius 0.3s, margin 0.3s;
+  padding: 20px;
+  /* Espacio alrededor del video */
+  z-index: 10;
 }
 
-/* Sin borde en pantalla completa */
-.video-container.fullscreen-active {
-  border: none;
-  box-shadow: none;
-  border-radius: 0;
-  margin: 0;
-}
+/* Sin borde en pantalla completa (ahora siempre está en pantalla completa virtual) */
+
 
 /* Modos de ajuste de video según data-fit */
 .player-interface-inner[data-fit="contain"] .video-player-element {
@@ -538,6 +589,104 @@ body {
   color: white;
   z-index: 100;
   animation: fadeIn 0.4s ease-out;
+}
+
+.movie-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  width: 100%;
+}
+
+.movie-top-links {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.movie-nav-item {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #cccccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.movie-nav-item.active {
+  color: #ffeb3b;
+  font-weight: 600;
+}
+
+.movie-nav-item:hover {
+  color: #ffffff;
+}
+
+.movie-nav-separator {
+  width: 1px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 0 10px;
+}
+
+.movie-top-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.movie-search-container {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  padding: 8px 15px;
+  gap: 8px;
+  min-width: 250px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.movie-search-container:focus-within {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.movie-search-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.movie-search-container input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.movie-search-container input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.movie-top-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #000;
+  border: 2px solid #3b82f6;
+  overflow: hidden;
+}
+
+.movie-top-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .movie-sidebar {

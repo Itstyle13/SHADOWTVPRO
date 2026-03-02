@@ -253,8 +253,8 @@ const Player = () => {
         if (openHub) {
             setShowChannels(true);
         }
-        // Solo disparar fullscreen si es 'live' Y se solicita explícitamente Y no estamos ya en él
-        if (type === 'live' && forceFs && containerRef.current && !document.fullscreenElement) {
+        // Disparar fullscreen si es 'live' o 'vod' Y se solicita explícitamente Y no estamos ya en él
+        if ((type === 'live' || type === 'vod') && forceFs && containerRef.current && !document.fullscreenElement) {
             containerRef.current.requestFullscreen().catch(err => {
                 console.warn("Error enabling fullscreen:", err);
             });
@@ -320,180 +320,162 @@ const Player = () => {
     return (
         <div className={`player-layout ${isFullscreen ? 'layout-fullscreen' : ''}`} ref={layoutRef}>
 
-            {/* Header Area */}
             {!isFullscreen && (
-                <div className="header-logo-area">
-                    <ShadowLogo size={46} />
+                <div className="layout-col-left">
+                    <div className="header-logo-area">
+                        <ShadowLogo size={46} />
+                    </div>
+
+                    <div className="sidebar-main">
+                        <div className={`nav-item ${selectedType === 'live' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
+                            <span className="nav-icon">📺</span>
+                            <span className="nav-label">TV</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'destacados' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
+                            <span className="nav-icon">👍</span>
+                            <span className="nav-label">DESTACADOS</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'vod' ? 'active' : ''}`} onClick={() => handleSetType('vod')}>
+                            <span className="nav-icon">🎬</span>
+                            <span className="nav-label">PELÍCULA</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'series' ? 'active' : ''}`} onClick={() => handleSetType('series')}>
+                            <span className="nav-icon">📺</span>
+                            <span className="nav-label">SERIES</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'kids' ? 'active' : ''}`} onClick={() => handleSetType('vod')}>
+                            <span className="nav-icon">👶</span>
+                            <span className="nav-label">KIDS</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'anime' ? 'active' : ''}`} onClick={() => handleSetType('series')}>
+                            <span className="nav-icon">🐼</span>
+                            <span className="nav-label">ANIME</span>
+                        </div>
+                        <div className={`nav-item ${selectedType === 'explorar' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
+                            <span className="nav-icon">🧭</span>
+                            <span className="nav-label">EXPLORAR</span>
+                        </div>
+                    </div>
+
+                    <div className="sidebar-footer">
+                        <div className="footer-btn" title="Inicio">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="currentColor" strokeWidth="2" />
+                            </svg>
+                        </div>
+                        <div className="footer-btn" title="Favoritos">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        </div>
+                        <div className="footer-btn" title="Buscar">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+                                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                        </div>
+                        <div className="footer-btn" title="Salir" onClick={() => { localStorage.clear(); window.location.href = '/'; }}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+                                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Top Bar */}
+            {/* Top Bar (Iconos Estilo Xuper TV) - Global Top Right */}
             {!isFullscreen && (
                 <div className="top-bar">
                     <div className="status-icons-group">
-                        <span style={{ fontSize: '18px' }}>🔍</span>
-                        <span style={{ fontSize: '18px' }}>📑</span>
-                        <span style={{ fontSize: '18px' }}>🕓</span>
-                        <span style={{ fontSize: '18px' }}>👤</span>
-                        <span style={{ fontSize: '18px' }}>🔔</span>
-                        <span style={{ fontSize: '18px' }}>📡</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>🔍</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>⚡</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>🕓</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>👤</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>🔔</span>
+                        <span style={{ fontSize: '18px', cursor: 'pointer' }}>📡</span>
                         <Clock />
                     </div>
                 </div>
             )}
 
-            {/* Sidebar */}
-            {!isFullscreen && (
-                <div className="sidebar-main">
-                    <div className={`nav-item ${selectedType === 'live' ? 'active' : ''}`} onClick={() => handleSetType('live')}>
-                        <span className="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                                <path d="M21 3H3a2 2 0 00-2 2v12a2 2 0 002 2h5v2h8v-2h5a2 2 0 002-2V5a2 2 0 00-2-2zm0 14H3V5h18v12z" />
-                            </svg>
-                        </span>
-                        <span className="nav-label">TV</span>
-                    </div>
-                    <div className={`nav-item ${selectedType === 'vod' ? 'active' : ''}`} onClick={() => handleSetType('vod')}>
-                        <span className="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                                <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V4h-4z" />
-                            </svg>
-                        </span>
-                        <span className="nav-label">PELÍCULA</span>
-                    </div>
-                    <div className={`nav-item ${selectedType === 'series' ? 'active' : ''}`} onClick={() => handleSetType('series')}>
-                        <span className="nav-icon">
-                            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                                <path d="M4 6H2v14a2 2 0 002 2h14v-2H4V6zm16-4H8a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2zm-8 12.5v-9l6 4.5-6 4.5z" />
-                            </svg>
-                        </span>
-                        <span className="nav-label">SERIES</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Sidebar Footer */}
-            {!isFullscreen && (
-                <div className="sidebar-footer">
-                    <div className="footer-btn" title="Inicio">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="currentColor" strokeWidth="2" />
-                        </svg>
-                    </div>
-                    <div className="footer-btn" title="Favoritos">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                    </div>
-                    <div className="footer-btn" title="Buscar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
-                            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
-                    </div>
-                    <div className="footer-btn" title="Salir" onClick={() => { localStorage.clear(); window.location.href = '/'; }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
-                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-                        </svg>
-                    </div>
-                </div>
-            )}
-
-            {/* Video Area */}
-            <div className={`video-container${isFullscreen ? ' fullscreen-active' : ''}`}>
-                <PlayerInterface
-                    ref={videoRef}
-                    containerRef={containerRef}
-                    showUI={showUI}
-                    showChannels={showChannels}
-                    isFullscreen={isFullscreen}
-                    loading={isLoading}
-                    downloadSpeed={downloadSpeed}
-                    currentStream={currentStream}
-                    currentEPG={currentEPG}
-                    error={error}
-                    isPlaying={isPlaying}
-                    isMuted={isMuted}
-                    handleMouseMove={handleMouseMove}
-                    playPrevious={playPrevious}
-                    handleTogglePlay={handleTogglePlay}
-                    playNext={playNext}
-                    handleToggleMute={() => setIsMuted(!isMuted)}
-                    handleFullscreen={handleFullscreen}
-                    playStream={handlePlayStream}
-                    setError={setError}
-                    audioTracks={audioTracks}
-                    subtitleTracks={subtitleTracks}
-                    currentAudioTrack={currentAudioTrack}
-                    currentSubtitleTrack={currentSubtitleTrack}
-                    onChangeAudio={(id) => { videoRef.current?.setAudioTrack(id); setCurrentAudioTrack(id); }}
-                    onChangeSubtitle={(id) => { videoRef.current?.setSubtitleTrack(id); setCurrentSubtitleTrack(id); }}
-                    videoObjectFit={videoObjectFit}
-                    fitLabel={FIT_LABELS[videoObjectFit] || 'Original'}
-                    onToggleFit={toggleVideoFit}
-                    setShowChannels={setShowChannels}
-                    currentTime={currentTime}
-                    duration={duration}
-                    onSeek={handleSeek}
-                    selectedType={selectedType}
-                >
-                    <VideoPlayer
+            {/* Column 2: Center Video Area */}
+            <div className={`layout-col-center${isFullscreen ? ' fullscreen-active' : ''}`}>
+                <div className="video-container">
+                    <PlayerInterface
                         ref={videoRef}
-                        stream={showInitialSplash ? null : currentStream}
-                        type={selectedType}
-                        token={token}
-                        API_BASE={API_BASE}
+                        containerRef={containerRef}
+                        showUI={showUI}
+                        showChannels={showChannels}
+                        isFullscreen={isFullscreen}
+                        loading={isLoading}
+                        downloadSpeed={downloadSpeed}
+                        currentStream={currentStream}
+                        currentEPG={currentEPG}
+                        error={error}
+                        isPlaying={isPlaying}
                         isMuted={isMuted}
-                        onLoadStart={() => setIsLoading(true)}
-                        onLoadEnd={() => setIsLoading(false)}
-                        onTimeUpdate={setCurrentTime}
-                        onDurationChange={setDuration}
-                        onError={(e) => {
-                            setError(e.message);
-                        }}
-                        onSpeedUpdate={setDownloadSpeed}
-                        onTracksLoaded={({ audioTracks, subtitleTracks }) => { setAudioTracks(audioTracks); setSubtitleTracks(subtitleTracks); }}
-                        onAudioTrackChanged={setCurrentAudioTrack}
-                        onSubtitleTrackChanged={setCurrentSubtitleTrack}
-                        objectFit={videoObjectFit}
-                    />
+                        handleMouseMove={handleMouseMove}
+                        playPrevious={playPrevious}
+                        handleTogglePlay={handleTogglePlay}
+                        playNext={playNext}
+                        handleToggleMute={() => setIsMuted(!isMuted)}
+                        handleFullscreen={handleFullscreen}
+                        playStream={handlePlayStream}
+                        setError={setError}
+                        audioTracks={audioTracks}
+                        subtitleTracks={subtitleTracks}
+                        currentAudioTrack={currentAudioTrack}
+                        currentSubtitleTrack={currentSubtitleTrack}
+                        onChangeAudio={(id) => { videoRef.current?.setAudioTrack(id); setCurrentAudioTrack(id); }}
+                        onChangeSubtitle={(id) => { videoRef.current?.setSubtitleTrack(id); setCurrentSubtitleTrack(id); }}
+                        videoObjectFit={videoObjectFit}
+                        fitLabel={FIT_LABELS[videoObjectFit] || 'Original'}
+                        onToggleFit={toggleVideoFit}
+                        setShowChannels={setShowChannels}
+                        currentTime={currentTime}
+                        duration={duration}
+                        onSeek={handleSeek}
+                        selectedType={selectedType}
+                    >
+                        <VideoPlayer
+                            ref={videoRef}
+                            stream={showInitialSplash ? null : currentStream}
+                            type={selectedType}
+                            token={token}
+                            API_BASE={API_BASE}
+                            isMuted={isMuted}
+                            onLoadStart={() => setIsLoading(true)}
+                            onLoadEnd={() => setIsLoading(false)}
+                            onTimeUpdate={setCurrentTime}
+                            onDurationChange={setDuration}
+                            onError={(e) => {
+                                setError(e.message);
+                            }}
+                            onSpeedUpdate={setDownloadSpeed}
+                            onTracksLoaded={({ audioTracks, subtitleTracks }) => { setAudioTracks(audioTracks); setSubtitleTracks(subtitleTracks); }}
+                            onAudioTrackChanged={setCurrentAudioTrack}
+                            onSubtitleTrackChanged={setCurrentSubtitleTrack}
+                            objectFit={videoObjectFit}
+                        />
 
-                </PlayerInterface>
+                    </PlayerInterface>
+                </div>
             </div>
 
-            {/* Right Sidebar: Channels List (Always visible on main screen) */}
-            {!isFullscreen && (
-                <div className="main-right-sidebar">
-                    <div className="main-search-box">
-                        <input
-                            type="text"
-                            placeholder="Buscar canal..."
-                            value={mainSearchQuery}
-                            onChange={(e) => setMainSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="main-channels-list">
-                        {mainStreams
-                            .filter(s => s.name?.toLowerCase().includes(mainSearchQuery.toLowerCase()))
-                            .map((stream, idx) => (
-                                <div
-                                    key={`${stream.stream_id}-${idx}`}
-                                    className={`main-channel-item ${currentStream?.stream_id === stream.stream_id ? 'active' : ''}`}
-                                    onClick={() => handlePlayStream(stream, 'live')}
-                                >
-                                    <img
-                                        src={stream.stream_icon ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(stream.stream_icon)}&name=${encodeURIComponent(stream.name || '')}&token=${token}` : "/logo_splash.png"}
-                                        alt=""
-                                        onError={(e) => e.target.src = "/logo_splash.png"}
-                                    />
-                                    <span>{stream.name}</span>
-                                </div>
-                            ))
-                        }
-                    </div>
-                </div>
-            )}
-
-            {renderSection()}
+            {/* Column 3: Right Sidebar / App Content */}
+            <div
+                className="layout-col-right"
+                style={{
+                    display: (isFullscreen && selectedType !== 'live') ? 'none' : 'flex',
+                    zIndex: isFullscreen ? 10000 : 'auto',
+                    position: isFullscreen ? 'absolute' : 'relative',
+                    inset: isFullscreen ? 0 : 'auto',
+                    pointerEvents: isFullscreen ? 'none' : 'auto',
+                    width: isFullscreen ? '100%' : undefined,
+                    background: isFullscreen ? 'transparent' : '#000'
+                }}
+            >
+                {renderSection()}
+            </div>
 
             {isExpired && (
                 <div className="expiration-overlay">

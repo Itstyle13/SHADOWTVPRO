@@ -59,11 +59,15 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     }, [fetchStreams]);
 
     useEffect(() => {
-        // Solo forzar mostrar canales si estamos en la sección LIVE
-        if (isFullscreen && selectedType === 'live') {
+        // Si no estamos en fullscreen, la barra derecha SIEMPRE debe verse
+        // Además, el usuario solicitó que "sólo debe aparecer la lista de canales de todo"
+        if (!isFullscreen && selectedType === 'live') {
             setShowChannels(true);
+            if (selectedCategory !== 'all') {
+                handleCategorySelect('all');
+            }
         }
-    }, [isFullscreen, setShowChannels, selectedType]);
+    }, [isFullscreen, setShowChannels, selectedType, selectedCategory, handleCategorySelect]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -134,7 +138,9 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
     const handlePlayStream = (stream) => {
         onPlayStream(stream, 'live');
-        setShowChannels(false);
+        if (isFullscreen) {
+            setShowChannels(false);
+        }
     };
 
     const handleBackToHome = () => {
@@ -172,7 +178,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             inset: 0,
             height: '100%',
             overflow: 'hidden',
-            pointerEvents: 'auto',
+            pointerEvents: 'none', // IMPORTANTE: no bloquear clics del resto de la app
             zIndex: 1500
         }}>
             {(!showChannels && isFullscreen && showUI) && (
@@ -183,25 +189,13 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 </div>
             )}
 
-            {showChannels && (
-                <div className="tv-hub-overlay">
-                    <div className="tv-hub-header">
-                        <div className="back-btn" onClick={handleBackToHome}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="18" height="18">
-                                <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
-                            </svg>
-                            <span>INICIO</span>
-                        </div>
-                        <div className="global-close-btn" onClick={() => setShowChannels(false)} title="Cerrar Menú">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="22" height="22">
-                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                        </div>
-                    </div>
-
+            {(!isFullscreen || showChannels) && (
+                <div className={`tv-hub-overlay ${isFullscreen ? 'fullscreen-overlay' : ''}`}>
                     <div className="tv-hub-content">
-                        <div className="tv-categories-pane">
-                            <h2 className="pane-title">Categorías</h2>
+
+                        {/* Panel de Categorías (Visible junto a canales en fs o por defecto si se requiere) */}
+                        <div className="tv-categories-pane" style={{ display: isFullscreen ? 'flex' : 'none' }}>
+                            {isFullscreen && <div className="fs-pane-title">Categorías</div>}
                             <div className="vertical-category-list" ref={categoriesRef}>
                                 {categories.map(cat => (
                                     <div
@@ -209,13 +203,32 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                                         className={`category-vertical-item ${selectedCategory === cat.category_id ? 'active' : ''}`}
                                         onClick={() => handleCategorySelect(cat.category_id)}
                                     >
-                                        {cat.category_name}
+                                        <span className="cat-name">{cat.category_name}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
+                        {/* Canales */}
                         <div className="tv-channels-pane">
+                            <div className="search-bar-container">
+                                <input
+                                    id="tvhub-search-input"
+                                    type="text"
+                                    placeholder="Buscar en todos los canales..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => {
+                                        if (selectedCategory !== 'all') {
+                                            handleCategorySelect('all');
+                                        }
+                                    }}
+                                    className="tvhub-search-input"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="fs-pane-title">Lista de canales</div>
+
                             {error && (
                                 <div className="error-msg-overlay">
                                     <span>⚠️ {error}</span>
@@ -230,8 +243,10 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                                 currentStream={currentStream}
                                 playStream={handlePlayStream}
                                 token={token}
-                                loading={streamsLoading} // Pass loading state to grid
+                                loading={streamsLoading}
                             />
+
+
                         </div>
                     </div>
                 </div>
@@ -240,9 +255,12 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             <style>{`
                 .tv-hub-overlay {
                     position: absolute;
-                    inset: 0;
-                    background: rgba(0, 0, 0, 0.85);
-                    z-index: 2000;
+                    top: 80px; /* Debajo de la barra superior en modo normal */
+                    bottom: 0; 
+                    right: 0; /* Pegado a la derecha en modo normal */
+                    left: auto;
+                    width: 350px; /* Ancho del panel derecho */
+                    z-index: 50;
                     display: flex;
                     flex-direction: column;
                     animation: fadeInHub 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -250,105 +268,137 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 }
 
                 @keyframes fadeInHub {
-                    from { opacity: 0; transform: scale(1.05); }
-                    to { opacity: 1; transform: scale(1); }
+                    from { opacity: 0; transform: translateX(20px); }
+                    to { opacity: 1; transform: translateX(0); }
                 }
 
-                .tv-hub-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 40px 50px 20px;
+                /* -- Estilos específicos para Fullscreen Overlay -- */
+                .tv-hub-overlay.fullscreen-overlay {
+                    top: 0;
+                    bottom: 0;
+                    left: 0;
+                    right: auto;
+                    width: 700px; /* Ancho suficiente para menú categorías (350) + canales (350) */
+                    background: rgba(10, 10, 10, 0.85); /* Fondo semitransparente general */
+                    z-index: 10000; /* Sobre el reproductor fijo 9999 */
+                    animation: slideInLeft 0.3s ease-out;
                 }
 
-                .tv-hub-content {
-                    display: flex;
+                @keyframes slideInLeft {
+                    from { opacity: 0; transform: translateX(-40px); }
+                    to { opacity: 1; transform: translateX(0); }
+                }
+
+                .tv-hub-overlay.fullscreen-overlay .tv-hub-content {
+                    flex-direction: row; /* Columna Categorías + Columna Canales */
+                }
+
+                .tv-hub-overlay.fullscreen-overlay .tv-channels-pane {
                     flex: 1;
-                    padding: 0 20px 40px; /* Reduced side padding */
-                    gap: 20px;
-                    min-height: 0;
-                    height: calc(100% - 120px);
-                    overflow: hidden;
-                    justify-content: flex-start; /* Aligned to the LEFT */
-                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
                 }
 
                 .tv-categories-pane {
-                    width: 220px;
-                    align-self: stretch;
+                    flex: 1; /* Ocupa 350px */
                     display: flex;
                     flex-direction: column;
-                    background: rgba(0, 0, 0, 0.6);
-                    backdrop-filter: blur(20px);
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    padding: 12px;
-                    min-height: 0;
+                    border-right: 1px solid rgba(255, 255, 255, 0.05);
+                    pointer-events: auto;
                     overflow: hidden;
-                }
-
-                .pane-title {
-                    font-size: 0.6rem;
-                    text-transform: uppercase;
-                    letter-spacing: 1.5px;
-                    color: #888;
-                    margin-bottom: 15px;
-                    font-weight: 800;
-                    text-align: center;
                 }
 
                 .vertical-category-list {
-                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
                     overflow-y: auto;
-                    padding-right: 10px;
+                    padding: 0 10px 10px 10px;
                 }
 
                 .category-vertical-item {
-                    padding: 6px 10px;
-                    margin-bottom: 4px;
-                    border-radius: 6px;
-                    color: #aaa;
-                    font-size: 0.65rem;
-                    font-weight: 500;
+                    padding: 12px 20px;
+                    border-radius: 8px;
                     cursor: pointer;
-                    transition: all 0.2s ease;
-                    text-transform: uppercase;
+                    color: #a0a0a0;
+                    font-size: 0.95rem;
+                    font-weight: 600;
+                    transition: all 0.2s;
                 }
 
-                .category-vertical-item:hover {
-                    background: rgba(255, 255, 255, 0.1);
+                .category-vertical-item:hover, .category-vertical-item.active {
+                    background: rgba(255,255,255,0.05);
                     color: #fff;
                 }
 
-                .category-vertical-item.active {
-                    background: linear-gradient(90deg, rgba(59, 130, 246, 0.3) 0%, transparent 100%);
-                    color: #fff;
-                    font-weight: 700;
-                    border-left: 3px solid #3b82f6;
+                .fs-pane-title {
+                    font-size: 1.1rem;
+                    font-weight: 500;
+                    color: rgba(255, 255, 255, 0.85);
+                    padding: 20px 10px 10px 20px;
+                }
+                /* -- Fin Estilos Fullscreen -- */
+
+                .tv-hub-content {
+                    position: absolute;
+                    inset: 0;
+                    display: flex;
+                    flex-direction: column;
+                    pointer-events: none;
+                }
+
+                .tv-hub-header {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    left: 0;
+                    height: 80px;
+                    display: flex;
+                    justify-content: flex-end; /* Top Bar a la derecha */
+                    align-items: center;
+                    padding: 0 40px;
+                    z-index: 100;
                 }
 
                 .tv-channels-pane {
-                    flex: 1;
-                    align-self: stretch;
-                    background: rgba(0, 0, 0, 0.6);
-                    backdrop-filter: blur(20px);
-                    border-radius: 12px;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    position: relative; 
+                    width: 100%;
+                    height: 100%;
+                    background: transparent;
                     display: flex;
                     flex-direction: column;
-                    min-height: 0;
-                    height: 100%;
                     overflow: hidden;
-                    padding: 12px;
-                    position: relative;
+                    padding: 0px 5px 10px 5px;
+                    pointer-events: auto; 
                 }
+
+                .search-bar-container {
+                    margin-bottom: 10px;
+                    padding: 0 5px;
+                }
+
+                .tvhub-search-input {
+                    width: 100%;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    background: rgba(0, 0, 0, 0.5);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    color: white;
+                    font-size: 0.9rem;
+                    outline: none;
+                    transition: border-color 0.2s, background 0.2s;
+                }
+                .tvhub-search-input:focus {
+                    border-color: #3b82f6;
+                    background: rgba(0, 0, 0, 0.7);
+                }
+
 
                 .tv-channels-pane .content-list {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
                     min-height: 0;
-                    height: 100%;
                     width: 100%;
                 }
 
