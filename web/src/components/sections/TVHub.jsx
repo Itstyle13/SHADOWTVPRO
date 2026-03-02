@@ -59,11 +59,10 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     }, [fetchStreams]);
 
     useEffect(() => {
-        // Si no estamos en fullscreen, la barra derecha SIEMPRE debe verse
-        // Además, el usuario solicitó que "sólo debe aparecer la lista de canales de todo"
-        if (!isFullscreen && selectedType === 'live') {
+        // Mostrar canales automáticamente al entrar a TV (Live), tanto en normal como en fullscreen
+        if (selectedType === 'live') {
             setShowChannels(true);
-            if (selectedCategory !== 'all') {
+            if (!isFullscreen && selectedCategory !== 'all') {
                 handleCategorySelect('all');
             }
         }
@@ -191,6 +190,24 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
             {(!isFullscreen || showChannels) && (
                 <div className={`tv-hub-overlay ${isFullscreen ? 'fullscreen-overlay' : ''}`}>
+                    {/* Buscador global a lo ancho del overlay completo */}
+                    <div className="search-bar-global-container">
+                        <input
+                            id="tvhub-search-input"
+                            type="text"
+                            placeholder="Buscar en todos los canales..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onFocus={() => {
+                                if (selectedCategory !== 'all') {
+                                    handleCategorySelect('all');
+                                }
+                            }}
+                            className="tvhub-search-input"
+                            autoComplete="off"
+                        />
+                    </div>
+
                     <div className="tv-hub-content">
 
                         {/* Panel de Categorías (Visible junto a canales en fs o por defecto si se requiere) */}
@@ -211,22 +228,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                         {/* Canales */}
                         <div className="tv-channels-pane">
-                            <div className="search-bar-container">
-                                <input
-                                    id="tvhub-search-input"
-                                    type="text"
-                                    placeholder="Buscar en todos los canales..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    onFocus={() => {
-                                        if (selectedCategory !== 'all') {
-                                            handleCategorySelect('all');
-                                        }
-                                    }}
-                                    className="tvhub-search-input"
-                                    autoComplete="off"
-                                />
-                            </div>
+
                             <div className="fs-pane-title">Lista de canales</div>
 
                             {error && (
@@ -340,11 +342,12 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 /* -- Fin Estilos Fullscreen -- */
 
                 .tv-hub-content {
-                    position: absolute;
-                    inset: 0;
+                    position: relative;
+                    flex: 1;
                     display: flex;
                     flex-direction: column;
                     pointer-events: none;
+                    min-height: 0;
                 }
 
                 .tv-hub-header {
@@ -372,9 +375,12 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                     pointer-events: auto; 
                 }
 
-                .search-bar-container {
-                    margin-bottom: 10px;
-                    padding: 0 5px;
+                .search-bar-global-container {
+                    padding: 20px 20px 5px 20px;
+                    width: 100%;
+                    flex-shrink: 0;
+                    pointer-events: auto;
+                    z-index: 100;
                 }
 
                 .tvhub-search-input {

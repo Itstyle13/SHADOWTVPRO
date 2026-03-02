@@ -172,7 +172,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     // RENDERIZADO DE VISTA DETALLE
     if (selectedSeries) {
         return (
-            <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none' }}>
+            <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none', background: 'transparent', position: 'relative', height: '100%', width: '100%' }}>
                 <div className="movie-sidebar">
                     <div className="sidebar-header">
                         <button className="sidebar-btn" onClick={handleBack} style={{ marginBottom: '20px' }}>
@@ -235,8 +235,8 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
     // RENDERIZADO DE VISTA CUADRÍCULA (NORMAL)
     return (
-        <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none' }}>
-            <div className="movie-sidebar">
+        <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'row-reverse', background: 'transparent', position: 'relative', height: '100%', width: '100%' }}>
+            <div className="movie-sidebar" style={{ background: '#0a0a0a', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', borderRight: 'none', width: '300px' }}>
                 <div className="sidebar-header">
                     <div className="logo-section" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', paddingTop: '10px' }}>
                         <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -304,7 +304,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                 </div>
             </div>
 
-            <div className="movie-content-area" ref={contentAreaRef} onScroll={handleScroll}>
+            <div className="movie-content-area" ref={contentAreaRef} onScroll={handleScroll} style={{ padding: '40px 60px', overflowY: 'hidden' }}>
                 <div className="movie-top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <div className="sort-dropdown" onClick={() => setShowSort(!showSort)} style={{ position: 'relative', cursor: 'pointer', background: '#66537a', padding: '10px 20px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         {SORT_LABELS[sortBy]}
@@ -353,11 +353,6 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     })}
                 </div>
 
-                {visibleCount < filteredStreams.length && (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                        Cargando más series...
-                    </div>
-                )}
             </div>
         </div>
     );

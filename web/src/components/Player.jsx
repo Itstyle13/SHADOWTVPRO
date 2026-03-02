@@ -147,10 +147,10 @@ const Player = () => {
             setIsFullscreen(isFs);
 
             // Si salimos de pantalla completa y estamos en VOD o Series,
-            // detenemos la reproducción y volvemos al Hub
+            // (Comportamiento modificado: no detener reproducción, para que la UI principal funcione)
             if (!isFs && (selectedType === 'vod' || selectedType === 'series')) {
-                setCurrentStream(null);
-                setShowChannels(true);
+                // setCurrentStream(null); // Eliminamos esto para que no quite la película al salir de FS accidentalmente
+                setShowChannels(true); // Aseguramos que se vea la UI
             }
         };
         document.addEventListener('fullscreenchange', handleFsChange);
@@ -465,11 +465,11 @@ const Player = () => {
             <div
                 className="layout-col-right"
                 style={{
-                    display: (isFullscreen && selectedType !== 'live') ? 'none' : 'flex',
+                    display: (isFullscreen && selectedType !== 'live' && selectedType !== 'vod') ? 'none' : 'flex',
                     zIndex: isFullscreen ? 10000 : 'auto',
                     position: isFullscreen ? 'absolute' : 'relative',
                     inset: isFullscreen ? 0 : 'auto',
-                    pointerEvents: isFullscreen ? 'none' : 'auto',
+                    pointerEvents: (isFullscreen && selectedType !== 'vod') ? 'none' : 'auto', // permitimos clicks en vod fullscreen
                     width: isFullscreen ? '100%' : undefined,
                     background: isFullscreen ? 'transparent' : '#000'
                 }}

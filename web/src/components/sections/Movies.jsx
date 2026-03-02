@@ -135,7 +135,7 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
     const currentCategoryName = selectedCategory === 'all' ? 'TODO' : categories.find(c => c.category_id === selectedCategory)?.category_name || '';
     return (
-        <div className="movie-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'column' }}>
+        <div className="movie-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'column', background: 'radial-gradient(circle at 20% 50%, rgba(20, 20, 35, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%)' }}>
             {/* Top Navigation */}
             <div className="movie-top-nav">
                 <div className="movie-top-links">

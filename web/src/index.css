@@ -146,8 +146,8 @@ body {
   padding: 16px 24px;
   /* Mayor padding vertical */
   gap: 16px;
-  color: #a0a0a0;
-  /* Grisáceo similar a la captura */
+  color: var(--neon-blue);
+  /* Azul solicitado */
   font-weight: 700;
   font-size: 1.1rem;
   /* Texto más grande */
@@ -158,13 +158,13 @@ body {
 }
 
 .nav-item:hover {
-  color: rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  background: rgba(59, 130, 246, 0.1);
 }
 
 .nav-item.active {
   color: #ffffff;
-  /* Blanco al estar seleccionado */
+  /* Blanco al estar seleccionado (o se puede dejar azul más brillante) */
   /* Remove border left and add text shadow for glow effect if needed */
   background: transparent;
 }
@@ -585,7 +585,6 @@ body {
   display: flex;
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(20, 20, 35, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%);
   color: white;
   z-index: 100;
   animation: fadeIn 0.4s ease-out;
