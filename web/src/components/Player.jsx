@@ -253,9 +253,9 @@ const Player = () => {
         if (openHub) {
             setShowChannels(true);
         }
-        // Disparar fullscreen si es 'live' o 'vod' Y se solicita explícitamente Y no estamos ya en él
-        if ((type === 'live' || type === 'vod') && forceFs && containerRef.current && !document.fullscreenElement) {
-            containerRef.current.requestFullscreen().catch(err => {
+        // Disparar fullscreen si es 'live', 'vod' o 'series' Y se solicita explícitamente Y no estamos ya en él
+        if ((type === 'live' || type === 'vod' || type === 'series') && forceFs && layoutRef.current && !document.fullscreenElement) {
+            layoutRef.current.requestFullscreen().catch(err => {
                 console.warn("Error enabling fullscreen:", err);
             });
         }
@@ -465,11 +465,11 @@ const Player = () => {
             <div
                 className="layout-col-right"
                 style={{
-                    display: (isFullscreen && selectedType !== 'live' && selectedType !== 'vod') ? 'none' : 'flex',
+                    display: (isFullscreen && selectedType !== 'live' && selectedType !== 'vod' && selectedType !== 'series') ? 'none' : 'flex',
                     zIndex: isFullscreen ? 10000 : 'auto',
                     position: isFullscreen ? 'absolute' : 'relative',
                     inset: isFullscreen ? 0 : 'auto',
-                    pointerEvents: (isFullscreen && selectedType !== 'vod') ? 'none' : 'auto', // permitimos clicks en vod fullscreen
+                    pointerEvents: (isFullscreen && (!showChannels || (selectedType !== 'vod' && selectedType !== 'series'))) ? 'none' : 'auto', // evitamos bloqueos de clicks si el video está visible
                     width: isFullscreen ? '100%' : undefined,
                     background: isFullscreen ? 'transparent' : '#000'
                 }}
