@@ -1,7 +1,7 @@
 const CACHE_NAME = 'shadow-tv-images-v3';
 const IMAGE_URL_PATTERN = /proxy-icon/;
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
     self.skipWaiting();
 });
 

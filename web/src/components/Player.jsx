@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import PlayerInterface from './PlayerComponents/PlayerInterface';
 import VideoPlayer from './VideoPlayer';
@@ -9,7 +9,6 @@ import Movies from './sections/Movies';
 import Series from './sections/Series';
 import TVHub from './sections/TVHub';
 import Clock from './PlayerComponents/Clock';
-import SplashScreen from './SplashScreen';
 
 import { API_BASE as API_ROOT } from '../config';
 const API_BASE = `${API_ROOT}/api`;
@@ -39,21 +38,9 @@ const Player = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [videoObjectFit, setVideoObjectFit] = useState('contain');
-    const [mainStreams, setMainStreams] = useState([]);
-    const [mainSearchQuery, setMainSearchQuery] = useState('');
-    const [mainLoading, setMainLoading] = useState(false);
-    const [activeStreamList, setActiveStreamList] = useState([]);
-
-    const [loadedSections, setLoadedSections] = useState({ live: false, vod: false, series: false });
-    const [imagesReady, setImagesReady] = useState({ live: false, vod: false, series: false });
-    const [showInitialSplash, setShowInitialSplash] = useState(true);
-
-    const isAppReady = loadedSections.live && loadedSections.vod && loadedSections.series;
-
     // Helper to preload images
     const preloadSectionImages = useCallback(async (list, type) => {
         if (!list || list.length === 0) {
-            setImagesReady(prev => ({ ...prev, [type]: true }));
             return;
         }
 
@@ -74,18 +61,12 @@ const Player = () => {
                 img.onerror = resolve;
             });
         }
-
-        setImagesReady(prev => ({ ...prev, [type]: true }));
     }, []);
 
     // Mark section as ready
     const handleDataLoaded = useCallback((section, initialData) => {
-        setLoadedSections(prev => ({ ...prev, [section]: true }));
         if (initialData) {
             preloadSectionImages(initialData, section);
-        } else {
-            // Fallback if no data was provided
-            setImagesReady(prev => ({ ...prev, [section]: true }));
         }
     }, [preloadSectionImages]);
 
@@ -118,23 +99,17 @@ const Player = () => {
 
         // Fetch Initial Streams for Main Sidebar
         const fetchInitial = async () => {
-            setMainLoading(true);
             try {
-                const res = await axios.get(`${API_BASE}/streams/live`, {
+                await axios.get(`${API_BASE}/streams/live`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setMainStreams(res.data);
             } catch (err) {
                 console.error("Error loading main streams:", err);
-            } finally {
-                setMainLoading(false);
             }
         };
         fetchInitial();
 
-        // Safety timeout to unblock app after 10s no matter what
         const safetyTimer = setTimeout(() => {
-            setLoadedSections(prev => ({ live: true, vod: true, series: true }));
         }, 10000);
 
         return () => clearTimeout(safetyTimer);
@@ -204,7 +179,7 @@ const Player = () => {
                 });
             }
         }
-    }, [API_BASE, token]);
+    }, [token]);
 
     const handleTogglePlay = () => {
         if (videoRef.current) {
@@ -274,16 +249,15 @@ const Player = () => {
     }, []);
 
     // Memoize onStreamsUpdate to prevent unnecessary re-renders of Hubs
-    const handleStreamsUpdate = useCallback((list) => {
-        setActiveStreamList(list);
+    const handleStreamsUpdate = useCallback(() => {
     }, []);
 
     // Pre-mount ALL sections at startup to completely eliminate loading times when switching tabs (user request)
-    const [mountedSections, setMountedSections] = useState({
+    const mountedSections = {
         live: true,
         vod: true,
         series: true
-    });
+    };
 
     const playNext = () => navigationHandlers.current.next?.();
     const playPrevious = () => navigationHandlers.current.prev?.();
@@ -429,7 +403,7 @@ const Player = () => {
                     >
                         <VideoPlayer
                             ref={videoRef}
-                            stream={showInitialSplash ? null : currentStream}
+                            stream={currentStream}
                             type={selectedType}
                             token={token}
                             API_BASE={API_BASE}
@@ -478,20 +452,6 @@ const Player = () => {
                         <button className="logout-btn" style={{ backgroundColor: '#ff4444' }} onClick={() => { localStorage.clear(); window.location.href = '/'; }}>SALIR</button>
                     </div>
                 </div>
-            )}
-
-
-            <style>{`
-                @keyframes slideUp {
-                    from { opacity: 0; transform: translate(-50%, 20px); }
-                    to { opacity: 1; transform: translate(-50%, 0); }
-                }
-            `}</style>
-            {showInitialSplash && (
-                <SplashScreen
-                    isReady={isAppReady}
-                    onComplete={() => setShowInitialSplash(false)}
-                />
             )}
         </div>
     );

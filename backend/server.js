@@ -1,6 +1,11 @@
 require('dotenv').config();
 const fastify = require('fastify')({ logger: true });
 
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
+
 // --- Plugins ---
 fastify.register(require('@fastify/cors'), { origin: '*' });
 

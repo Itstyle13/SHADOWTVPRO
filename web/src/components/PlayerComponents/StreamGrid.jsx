@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, memo } from 'react';
+import { memo } from 'react';
 import { API_BASE } from '../../config';
 import CategorySidebar from './CategorySidebar';
 

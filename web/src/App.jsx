@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Player from './components/Player';
+import SplashScreen from './components/SplashScreen';
 import './index.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -13,6 +14,17 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+    const [showSplash, setShowSplash] = useState(true);
+
+    if (showSplash) {
+        return (
+            <SplashScreen
+                isReady={true} // Siempre ready inicial para dejar pasar los 3s
+                onComplete={() => setShowSplash(false)}
+            />
+        );
+    }
+
     return (
         <Router>
             <Routes>

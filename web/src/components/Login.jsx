@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE } from '../config';
 
 const Login = () => {
-    const [xtreamUrl, setXtreamUrl] = useState('');
+    // URL hardcodeada y oculta para los clientes
+    const xtreamUrl = 'https://zona593movie.com:8443';
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -33,14 +34,6 @@ const Login = () => {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '100px' }}>
             <h2>IPTV LOGIN</h2>
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '300px' }}>
-                <input
-                    type="url"
-                    placeholder="http://server.url:port"
-                    value={xtreamUrl}
-                    onChange={(e) => setXtreamUrl(e.target.value)}
-                    style={{ padding: '10px', background: '#333', border: '1px solid #555', color: '#fff' }}
-                    required
-                />
                 <input
                     type="text"
                     placeholder="Username"

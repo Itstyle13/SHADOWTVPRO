@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ShadowLogo from './ShadowLogo';
 
 const SplashScreen = ({ onComplete, isReady }) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
 
