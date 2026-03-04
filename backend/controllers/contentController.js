@@ -203,9 +203,13 @@ class ContentController {
         const inputUrl = `${server}/${path}/${username}/${xtream_password}/${cleanId}${cleanId.includes('.') ? '' : (type === 'live' ? '.ts' : '.mp4')}`;
 
         console.log(`[TRANSCODE] Iniciando para ${type}: ${inputUrl}`);
-        reply.header('Content-Type', 'video/mp4');
+        if (type === 'live') {
+            reply.header('Content-Type', 'video/mp2t');
+        } else {
+            reply.header('Content-Type', 'video/mp4');
+        }
         // Iniciamos la transcodificación pasando request para detectar desconexiones
-        return reply.send(streamService.startTranscode(inputUrl, reply, request));
+        return reply.send(streamService.startTranscode(inputUrl, reply, request, type));
     }
 }
 

@@ -113,8 +113,9 @@ async function serveDirectStream(targetUrl, ext, request, reply, type, httpsAgen
 /**
  * Inicia un proceso de transcodificación FFmpeg de forma optimizada.
  */
-function startTranscode(inputUrl, reply, request) {
+function startTranscode(inputUrl, reply, request, type = 'vod') {
     const stream = new PassThrough();
+    const isLive = type === 'live';
 
     const command = ffmpeg(inputUrl)
         .inputOptions([
@@ -124,15 +125,17 @@ function startTranscode(inputUrl, reply, request) {
         ])
         .videoCodec('libx264')
         .audioCodec('aac')
+        .audioChannels(2)
+        .audioBitrate('128k')
         .outputOptions([
             '-preset ultrafast',
             '-tune zerolatency',
-            '-movflags frag_keyframe+empty_moov+default_base_moof+faststart',
-            '-f mp4',
+            isLive ? '-f mpegts' : '-f mp4',
+            isLive ? '-muxdelay 0.1' : '-movflags frag_keyframe+empty_moov+default_base_moof+faststart',
             '-pix_fmt yuv420p',
             '-threads 0',
-            '-crf 30', // Un poco más de compresión para velocidad de carga
-            '-profile:v baseline', '-level 3.0' // Máxima compatibilidad
+            '-crf ' + (isLive ? '28' : '30'), // Mejor balance calidad/rendimiento
+            '-profile:v baseline', '-level 3.0' // Máxima compatibilidad Android
         ])
         .on('start', (cmd) => {
             // Log mínimo para depuración

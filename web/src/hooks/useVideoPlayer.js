@@ -135,12 +135,17 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             cleanupPlayers();
             if (videoElement.current) {
                 const format = (stream.container_extension || '').toLowerCase();
-                const isUnsupported = ['mkv', 'avi', 'flv', 'wmv', 'divx', 'mpg', 'mpeg'].includes(format);
+                // Extender a todos los contenedores difíciles en WebView de Android
+                const isUnsupported = ['mkv', 'avi', 'flv', 'wmv', 'divx', 'mpg', 'mpeg', 'ts', 'm2ts'].includes(format);
 
-                // Forzar transcodificación si el formato es dudoso O si el segundo intento falló
-                const useTranscode = (type === 'vod' || type === 'series') && (isUnsupported || retryCountRef.current >= 2);
+                // Forzar transcodificación si el formato es dudoso (películas) o si estamos en live y solicitamos rescate
+                const useTranscode = ((type === 'vod' || type === 'series') && (isUnsupported || retryCountRef.current >= 2)) || (type === 'live' && attempts.hls && attempts.mpegts);
                 const extension = stream.container_extension ? `.${stream.container_extension}` : '';
-                let finalUrl = url || `${API_BASE}/${useTranscode ? 'transcode' : 'stream'}/${type}/${activeStreamKey}${extension}${useTranscode ? '.mp4' : ''}?token=${token}`;
+                let finalUrl = url;
+
+                if (!finalUrl || finalUrl.includes('/stream/') && useTranscode) {
+                    finalUrl = `${API_BASE}/${useTranscode ? 'transcode' : 'stream'}/${type}/${activeStreamKey}${extension}${useTranscode && type !== 'live' ? '.mp4' : ''}?token=${token}`;
+                }
 
                 // Sanitizar URL
                 finalUrl = finalUrl.replace(/([^:])\/\//g, '$1/');
@@ -200,6 +205,10 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                     console.warn("[VideoPlayer] MPEG-TS: error de formato → intentando HLS");
                     cleanupPlayers();
                     startHls();
+                } else if (isFormatError && attempts.hls) {
+                    console.warn("[VideoPlayer] MPEG-TS/HLS: Ambos fallaron en formato → Fallback Nativo (Transcode)");
+                    cleanupPlayers();
+                    startNative();
                 } else if (detail === mpegts.ErrorDetails.NETWORK_ERROR) {
                     // Solo reconectar en errores de red, con cooldown
                     reinit('mpegts_network_error');

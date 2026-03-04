@@ -10,6 +10,8 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "@capacitor/android": "^8.1.0",
+        "@capacitor/core": "^8.1.0",
         "axios": "^1.6.0",
         "hls.js": "^1.6.15",
         "lucide-react": "^0.575.0",
@@ -21,6 +23,7 @@
         "react-window": "^2.2.7"
     },
     "devDependencies": {
+        "@capacitor/cli": "^8.1.0",
         "@types/react": "^18.2.0",
         "@types/react-dom": "^18.2.0",
         "@vitejs/plugin-react": "^4.2.0",
