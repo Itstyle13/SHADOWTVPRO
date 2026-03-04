@@ -121,11 +121,10 @@ const Player = () => {
             const isFs = !!document.fullscreenElement;
             setIsFullscreen(isFs);
 
-            // Si salimos de pantalla completa y estamos en VOD o Series,
-            // (Comportamiento modificado: no detener reproducción, para que la UI principal funcione)
+            // Si salimos de pantalla completa y estamos en VOD o Series, devuélvenos al listado (detiene la reproducción)
             if (!isFs && (selectedType === 'vod' || selectedType === 'series')) {
-                // setCurrentStream(null); // Eliminamos esto para que no quite la película al salir de FS accidentalmente
-                setShowChannels(true); // Aseguramos que se vea la UI
+                setCurrentStream(null); // Detener película/serie y regresar a la grilla de selección
+                setShowChannels(true); // Aseguramos que se vea la UI principal
             }
         };
         document.addEventListener('fullscreenchange', handleFsChange);
@@ -297,6 +296,7 @@ const Player = () => {
             </>
         );
     };
+    const isFullCatalogView = !isFullscreen && !currentStream && (selectedType === 'vod' || selectedType === 'series');
 
     return (
         <div className={`player-layout ${isFullscreen ? 'layout-fullscreen' : ''}`} ref={layoutRef}>
@@ -363,7 +363,7 @@ const Player = () => {
             )}
 
             {/* Column 2: Center Video Area */}
-            <div className={`layout-col-center${isFullscreen ? ' fullscreen-active' : ''}`}>
+            <div className={`layout-col-center${isFullscreen ? ' fullscreen-active' : ''}`} style={{ display: isFullCatalogView ? 'none' : 'flex' }}>
                 <div className="video-container">
                     <PlayerInterface
                         ref={videoRef}
@@ -435,7 +435,8 @@ const Player = () => {
                     position: isFullscreen ? 'absolute' : 'relative',
                     inset: isFullscreen ? 0 : 'auto',
                     pointerEvents: (isFullscreen && (!showChannels || (selectedType !== 'vod' && selectedType !== 'series'))) ? 'none' : 'auto', // evitamos bloqueos de clicks si el video está visible
-                    width: isFullscreen ? '100%' : undefined,
+                    width: isFullscreen ? '100%' : (isFullCatalogView ? 'auto' : undefined),
+                    flex: isFullCatalogView ? 1 : undefined,
                     background: isFullscreen ? 'transparent' : '#000',
                     backdropFilter: isFullscreen && (!showChannels || (selectedType === 'live' && showChannels)) ? 'none' : undefined,
                     WebkitBackdropFilter: isFullscreen && (!showChannels || (selectedType === 'live' && showChannels)) ? 'none' : undefined
