@@ -15,6 +15,10 @@ import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.PlayerView;
+import androidx.media3.ui.AspectRatioFrameLayout;
+
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
 
 @UnstableApi
 public class MainActivity extends BridgeActivity {
@@ -43,9 +47,11 @@ public class MainActivity extends BridgeActivity {
 
         // 2. Obtener el contenedor base de Capacitor
         ViewGroup parent = (ViewGroup) getBridge().getWebView().getParent();
+        parent.setBackgroundColor(Color.BLACK);
 
         // 3. Crear el PlayerView de Media3
         playerView = new PlayerView(this);
+        playerView.setBackgroundColor(Color.BLACK);
         playerView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -102,8 +108,125 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    public long[] getVideoProgress() {
+        if (player != null) {
+            long current = player.getCurrentPosition();
+            long duration = player.getDuration();
+            return new long[] { current, duration > 0 ? duration : 0 };
+        }
+        return new long[] { 0, 0 };
+    }
+
+    public void seekVideo(long positionMs) {
+        runOnUiThread(() -> {
+            if (player != null) {
+                player.seekTo(positionMs);
+            }
+        });
+    }
+
+    public void resumeVideo() {
+        runOnUiThread(() -> {
+            if (player != null) player.play();
+        });
+    }
+
+    public void setVideoMuted(boolean muted) {
+        runOnUiThread(() -> {
+            if (player != null) {
+                player.setVolume(muted ? 0f : 1f);
+            }
+        });
+    }
+
+    public void setVideoObjectFit(String fit) {
+        runOnUiThread(() -> {
+            if (playerView != null) {
+                switch (fit) {
+                    case "contain":
+                        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
+                        break;
+                    case "16:9":
+                        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FILL);
+                        break;
+                    case "4:3":
+                        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
+                        break;
+                    default:
+                        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
+                        break;
+                }
+            }
+        });
+    }
+
+    public JSObject getVideoTracks() {
+        JSObject ret = new JSObject();
+        JSArray audioTracks = new JSArray();
+        JSArray subtitleTracks = new JSArray();
+
+        if (player != null) {
+            androidx.media3.common.Tracks tracks = player.getCurrentTracks();
+            for (int i = 0; i < tracks.getGroups().size(); i++) {
+                androidx.media3.common.Tracks.Group group = tracks.getGroups().get(i);
+                if (group.getType() == androidx.media3.common.C.TRACK_TYPE_AUDIO) {
+                    for (int j = 0; j < group.length; j++) {
+                        if (group.isTrackSupported(j)) {
+                            JSObject track = new JSObject();
+                            track.put("id", i + "_" + j);
+                            track.put("groupIndex", i);
+                            track.put("trackIndex", j);
+                            String lang = group.getMediaTrackGroup().getFormat(j).language;
+                            String label = group.getMediaTrackGroup().getFormat(j).label;
+                            track.put("language", lang != null ? lang : "Unknown");
+                            track.put("label", label != null ? label : "Audio " + (audioTracks.length() + 1));
+                            audioTracks.put(track);
+                        }
+                    }
+                } else if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
+                    for (int j = 0; j < group.length; j++) {
+                        if (group.isTrackSupported(j)) {
+                            JSObject track = new JSObject();
+                            track.put("id", i + "_" + j);
+                            track.put("groupIndex", i);
+                            track.put("trackIndex", j);
+                            String lang = group.getMediaTrackGroup().getFormat(j).language;
+                            String label = group.getMediaTrackGroup().getFormat(j).label;
+                            track.put("language", lang != null ? lang : "Unknown");
+                            track.put("label", label != null ? label : "Sub " + (subtitleTracks.length() + 1));
+                            subtitleTracks.put(track);
+                        }
+                    }
+                }
+            }
+        }
+        ret.put("audioTracks", audioTracks);
+        ret.put("subtitleTracks", subtitleTracks);
+        return ret;
+    }
+
+    public void setVideoTrack(String type, int groupIndex, int trackIndex) {
+        runOnUiThread(() -> {
+            if (player != null) {
+                androidx.media3.common.TrackSelectionParameters.Builder builder = 
+                    player.getTrackSelectionParameters().buildUpon();
+                
+                int trackType = type.equals("audio") ? androidx.media3.common.C.TRACK_TYPE_AUDIO : androidx.media3.common.C.TRACK_TYPE_TEXT;
+                
+                if (groupIndex == -1) {
+                    builder.setTrackTypeDisabled(trackType, true);
+                } else {
+                    builder.setTrackTypeDisabled(trackType, false);
+                    androidx.media3.common.TrackGroup trackGroup = player.getCurrentTracks().getGroups().get(groupIndex).getMediaTrackGroup();
+                    builder.setOverrideForType(new androidx.media3.common.TrackSelectionOverride(trackGroup, trackIndex));
+                }
+                player.setTrackSelectionParameters(builder.build());
+            }
+        });
+    }
+
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
         if (player != null) {
             player.release();

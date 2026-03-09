@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
 import PlayerInterface from './PlayerComponents/PlayerInterface';
 import VideoPlayer from './VideoPlayer';
 import ShadowLogo from './ShadowLogo';
@@ -15,6 +16,7 @@ const API_BASE = `${API_ROOT}/api`;
 
 const Player = () => {
     const token = useRef(localStorage.getItem('token')).current;
+    const isNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 
     // Global State
     const [selectedType, setSelectedType] = useState('live');
@@ -118,6 +120,7 @@ const Player = () => {
     // Fullscreen Listener
     useEffect(() => {
         const handleFsChange = () => {
+            if (isNative) return; // Evitamos sobreescribir state en nativo por eventos DOM
             const isFs = !!document.fullscreenElement;
             setIsFullscreen(isFs);
 
@@ -129,7 +132,7 @@ const Player = () => {
         };
         document.addEventListener('fullscreenchange', handleFsChange);
         return () => document.removeEventListener('fullscreenchange', handleFsChange);
-    }, [selectedType]);
+    }, [selectedType, isNative]);
 
     // UI Auto-Hide: ocultar controles tras 3s sin movimiento cuando hay stream activo
     const handleMouseMove = useCallback(() => {
@@ -172,13 +175,15 @@ const Player = () => {
         } else {
             setCurrentEPG(null);
             // Entrar en fullscreen automáticamente para películas y series si se solicita y es posible
-            if (autoFs && layoutRef.current && !document.fullscreenElement) {
-                layoutRef.current.requestFullscreen().catch(() => {
-                    // Silenciamos este error ya que suele ser por falta de gesto del usuario
-                });
+            if (autoFs) {
+                if (isNative) {
+                    setIsFullscreen(true);
+                } else if (layoutRef.current && !document.fullscreenElement) {
+                    layoutRef.current.requestFullscreen().catch(() => { });
+                }
             }
         }
-    }, [token]);
+    }, [token, isNative]);
 
     const handleTogglePlay = () => {
         if (videoRef.current) {
@@ -188,15 +193,22 @@ const Player = () => {
     };
 
     const handleFullscreen = () => {
-        if (layoutRef.current) {
+        if (isNative) {
+            const val = !isFullscreen;
+            setIsFullscreen(val);
+            if (!val && (selectedType === 'vod' || selectedType === 'series')) {
+                setCurrentStream(null);
+                setShowChannels(true);
+            }
+        } else if (layoutRef.current) {
             if (!document.fullscreenElement) layoutRef.current.requestFullscreen();
             else document.exitFullscreen();
         }
     };
 
     const handleSeek = (time) => {
-        if (videoRef.current?.current) {
-            videoRef.current.current.currentTime = time;
+        if (videoRef.current) {
+            if (videoRef.current.seekTo) videoRef.current.seekTo(time);
             setCurrentTime(time);
         }
     };
@@ -234,17 +246,21 @@ const Player = () => {
         if (openHub) {
             setShowChannels(true);
         }
-        // Disparar fullscreen si es 'live', 'vod' o 'series' Y se solicita explícitamente Y no estamos ya en él
-        if ((type === 'live' || type === 'vod' || type === 'series') && forceFs && layoutRef.current && !document.fullscreenElement) {
-            layoutRef.current.requestFullscreen().catch(err => {
-                console.warn("Error enabling fullscreen:", err);
-            });
+        // Disparar fullscreen si es 'live', 'vod' o 'series' Y se solicita explícitamente
+        if ((type === 'live' || type === 'vod' || type === 'series') && forceFs) {
+            if (isNative) {
+                setIsFullscreen(true);
+            } else if (layoutRef.current && !document.fullscreenElement) {
+                layoutRef.current.requestFullscreen().catch(err => {
+                    console.warn("Error enabling fullscreen:", err);
+                });
+            }
         }
     };
 
-    const navigationHandlers = useRef({ next: null, prev: null });
-    const setNavigationHandlers = useCallback((handlers) => {
-        navigationHandlers.current = { ...navigationHandlers.current, ...handlers };
+    const navigationHandlers = useRef({ live: {}, vod: {}, series: {} });
+    const setNavigationHandlers = useCallback((type, handlers) => {
+        navigationHandlers.current[type] = handlers;
     }, []);
 
     // Memoize onStreamsUpdate to prevent unnecessary re-renders of Hubs
@@ -258,8 +274,8 @@ const Player = () => {
         series: true
     };
 
-    const playNext = () => navigationHandlers.current.next?.();
-    const playPrevious = () => navigationHandlers.current.prev?.();
+    const playNext = () => navigationHandlers.current[selectedType]?.next?.();
+    const playPrevious = () => navigationHandlers.current[selectedType]?.prev?.();
 
 
     const renderSection = () => {
@@ -268,7 +284,6 @@ const Player = () => {
             onPlayStream: handlePlayStream,
             currentStream,
             setSelectedType: handleSetType,
-            setNavigationHandlers,
             showChannels, setShowChannels,
             isFullscreen, showUI,
             onStreamsUpdate: handleStreamsUpdate,
@@ -280,17 +295,17 @@ const Player = () => {
             <>
                 {mountedSections.live && (
                     <div style={{ display: selectedType === 'live' ? 'contents' : 'none' }}>
-                        <TVHub {...props} />
+                        <TVHub {...props} setNavigationHandlers={(h) => setNavigationHandlers('live', h)} />
                     </div>
                 )}
                 {mountedSections.vod && (
                     <div style={{ display: selectedType === 'vod' ? 'contents' : 'none' }}>
-                        <Movies {...props} />
+                        <Movies {...props} setNavigationHandlers={(h) => setNavigationHandlers('vod', h)} />
                     </div>
                 )}
                 {mountedSections.series && (
                     <div style={{ display: selectedType === 'series' ? 'contents' : 'none' }}>
-                        <Series {...props} />
+                        <Series {...props} setNavigationHandlers={(h) => setNavigationHandlers('series', h)} />
                     </div>
                 )}
             </>

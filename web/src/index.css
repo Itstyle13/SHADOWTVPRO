@@ -164,9 +164,12 @@ body {
 
 .nav-item.active {
   color: #ffffff;
-  /* Blanco al estar seleccionado (o se puede dejar azul más brillante) */
-  /* Remove border left and add text shadow for glow effect if needed */
-  background: transparent;
+  background: #e50914;
+  /* Fondo Rojo */
+  border-radius: 12px;
+  margin: 0 12px;
+  padding: 16px 12px;
+  /* Ajuste de padding por el margin */
 }
 
 .nav-icon {
@@ -179,8 +182,8 @@ body {
 }
 
 .nav-item.active .nav-icon svg {
-  color: var(--neon-blue);
-  fill: var(--neon-blue);
+  color: #ffffff;
+  fill: #ffffff;
 }
 
 .nav-label {

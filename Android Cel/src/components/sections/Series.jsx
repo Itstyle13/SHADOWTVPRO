@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 
-const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType }) => {
+const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType, setNavigationHandlers }) => {
     const [categories, setCategories] = useState([]);
     const [allStreams, setAllStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -150,6 +150,76 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         onPlayStream(streamData, 'series');
         setShowChannels(false);
     };
+
+    // Next/Prev for Episodes
+    useEffect(() => {
+        if (!setNavigationHandlers) return;
+        const handleNext = () => {
+            if (!currentStream || !seriesDetail || !seriesDetail.episodes) return;
+            let foundSeason = null;
+            let foundIdx = -1;
+            const seasons = Object.keys(seriesDetail.episodes).sort((a, b) => a - b);
+            for (const s of seasons) {
+                const idx = seriesDetail.episodes[s].findIndex(ep => ep.id === currentStream.id);
+                if (idx >= 0) {
+                    foundSeason = s; foundIdx = idx; break;
+                }
+            }
+            if (foundSeason !== null) {
+                const epList = seriesDetail.episodes[foundSeason];
+                if (foundIdx < epList.length - 1) {
+                    const nextEp = epList[foundIdx + 1];
+                    const streamData = { ...nextEp, stream_id: nextEp.id, name: nextEp.title, stream_type: 'series' };
+                    onPlayStream(streamData, 'series'); setShowChannels(false);
+                } else {
+                    const seasonIdx = seasons.indexOf(foundSeason);
+                    if (seasonIdx < seasons.length - 1) {
+                        const nextSeason = seasons[seasonIdx + 1];
+                        setActiveSeason(nextSeason);
+                        const nextEp = seriesDetail.episodes[nextSeason][0];
+                        if (nextEp) {
+                            const streamData = { ...nextEp, stream_id: nextEp.id, name: nextEp.title, stream_type: 'series' };
+                            onPlayStream(streamData, 'series'); setShowChannels(false);
+                        }
+                    }
+                }
+            }
+        };
+
+        const handlePrev = () => {
+            if (!currentStream || !seriesDetail || !seriesDetail.episodes) return;
+            let foundSeason = null;
+            let foundIdx = -1;
+            const seasons = Object.keys(seriesDetail.episodes).sort((a, b) => a - b);
+            for (const s of seasons) {
+                const idx = seriesDetail.episodes[s].findIndex(ep => ep.id === currentStream.id);
+                if (idx >= 0) {
+                    foundSeason = s; foundIdx = idx; break;
+                }
+            }
+            if (foundSeason !== null) {
+                const epList = seriesDetail.episodes[foundSeason];
+                if (foundIdx > 0) {
+                    const prevEp = epList[foundIdx - 1];
+                    const streamData = { ...prevEp, stream_id: prevEp.id, name: prevEp.title, stream_type: 'series' };
+                    onPlayStream(streamData, 'series'); setShowChannels(false);
+                } else {
+                    const seasonIdx = seasons.indexOf(foundSeason);
+                    if (seasonIdx > 0) {
+                        const prevSeason = seasons[seasonIdx - 1];
+                        setActiveSeason(prevSeason);
+                        const prevEpList = seriesDetail.episodes[prevSeason];
+                        const prevEp = prevEpList[prevEpList.length - 1];
+                        if (prevEp) {
+                            const streamData = { ...prevEp, stream_id: prevEp.id, name: prevEp.title, stream_type: 'series' };
+                            onPlayStream(streamData, 'series'); setShowChannels(false);
+                        }
+                    }
+                }
+            }
+        };
+        setNavigationHandlers({ next: handleNext, prev: handlePrev });
+    }, [currentStream, seriesDetail, setNavigationHandlers, onPlayStream, setShowChannels]);
 
     useEffect(() => {
         if (typeof onStreamsUpdate === 'function') {

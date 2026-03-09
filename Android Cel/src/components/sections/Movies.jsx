@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 
-const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType }) => {
+const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType, setNavigationHandlers }) => {
     const [categories, setCategories] = useState([]);
     const [allStreams, setAllStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -58,6 +58,8 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         loadInitialData();
     }, [API_BASE, token]);
 
+
+
     // Debounce Search
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -87,6 +89,22 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
         return result;
     }, [selectedCategory, allStreams, debouncedSearch, sortBy]);
+
+    // Setup Navigation Handlers for internal Next/Prev UI
+    useEffect(() => {
+        if (!setNavigationHandlers) return;
+        const handleNext = () => {
+            if (!currentStream) return;
+            const idx = filteredStreams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
+            if (idx >= 0 && idx < filteredStreams.length - 1) { onPlayStream(filteredStreams[idx + 1], 'vod'); setShowChannels(false); }
+        };
+        const handlePrev = () => {
+            if (!currentStream) return;
+            const idx = filteredStreams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
+            if (idx > 0) { onPlayStream(filteredStreams[idx - 1], 'vod'); setShowChannels(false); }
+        };
+        setNavigationHandlers({ next: handleNext, prev: handlePrev });
+    }, [currentStream, filteredStreams, setNavigationHandlers, onPlayStream, setShowChannels]);
 
     // Reset visible count on filter change
     useEffect(() => {

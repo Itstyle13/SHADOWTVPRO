@@ -27,8 +27,20 @@ const PlayerInterface = forwardRef(({
     currentTime,
     duration,
     onSeek,
-    selectedType
+    selectedType,
+    audioTracks,
+    subtitleTracks,
+    currentAudioTrack,
+    currentSubtitleTrack,
+    onChangeAudio,
+    onChangeSubtitle
 }, videoRef) => {
+    const [trackToast, setTrackToast] = React.useState(null);
+    const showTrackToast = (msg) => {
+        setTrackToast(msg);
+        setTimeout(() => setTrackToast(null), 3000);
+    };
+
     const formatTime = (time) => {
         if (isNaN(time)) return "0:00";
         const h = Math.floor(time / 3600);
@@ -46,6 +58,13 @@ const PlayerInterface = forwardRef(({
             onDoubleClick={handleFullscreen}
             data-fit={videoObjectFit}
         >
+            {/* Track Toast */}
+            {trackToast && (
+                <div className="track-toast">
+                    {trackToast}
+                </div>
+            )}
+
             {/* Canal Title Overlay - Ocultar si el catálogo está abierto */}
             {currentStream && showUI && !showChannels && (
                 <div className="top-channel-title">
@@ -130,6 +149,29 @@ const PlayerInterface = forwardRef(({
                                 <polygon points="5 4 15 12 5 20 5 4" /><rect x="17" y="4" width="2" height="16" />
                             </svg>
                         </div>
+                        {(selectedType === 'vod' || selectedType === 'series') && audioTracks && audioTracks.length > 0 && (
+                            <div className="nav-btn fit-btn" onClick={() => {
+                                const currentIndex = audioTracks.findIndex(t => String(t.id) === String(currentAudioTrack));
+                                const nextIdx = currentIndex === -1 ? 1 % audioTracks.length : (currentIndex + 1) % audioTracks.length;
+                                const nextTrack = audioTracks[nextIdx];
+                                onChangeAudio(nextTrack.id);
+                                showTrackToast(`Audio: ${nextTrack.language.toUpperCase()}`);
+                            }} title="Cambiar Idioma">
+                                <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' }}>AUD</span>
+                            </div>
+                        )}
+                        {(selectedType === 'vod' || selectedType === 'series') && subtitleTracks && subtitleTracks.length > 0 && (
+                            <div className="nav-btn fit-btn" onClick={() => {
+                                const options = [{ id: -1, label: 'Apagado', language: 'Desactivado' }, ...subtitleTracks];
+                                const currentIndex = options.findIndex(t => String(t.id) === String(currentSubtitleTrack));
+                                const nextIdx = currentIndex === -1 ? 1 % options.length : (currentIndex + 1) % options.length;
+                                const nextTrack = options[nextIdx];
+                                onChangeSubtitle(nextTrack.id);
+                                showTrackToast(`Sub: ${nextTrack.language.toUpperCase()}`);
+                            }} title="Cambiar Subtítulo">
+                                <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' }}>SUB</span>
+                            </div>
+                        )}
                         {selectedType === 'live' && (
                             <div className="nav-btn small-btn" onClick={() => {
                                 setShowChannels(true);
@@ -173,6 +215,32 @@ const PlayerInterface = forwardRef(({
                     align-items: center;
                     justify-content: center;
                     overflow: hidden;
+                }
+
+                .track-toast {
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    background: rgba(0, 0, 0, 0.75);
+                    color: #fff;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    z-index: 100000;
+                    backdrop-filter: blur(4px);
+                    animation: fadeInOut 3s forwards;
+                    pointer-events: none;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateY(-10px); }
+                    10% { opacity: 1; transform: translateY(0); }
+                    90% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(-10px); }
                 }
 
                 .loader-xuper {

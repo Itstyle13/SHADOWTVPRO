@@ -22,11 +22,19 @@ body {
   height: 100vh;
 }
 
-/* Transparencia para dejar ver el ExoPlayer Nativo por detrás */
-body.native-playing,
-body.native-playing #root,
-body.native-playing .player-layout,
-body.native-playing .layout-col-center.fullscreen-active {
+/* Transparencia absoluta para dejar ver el ExoPlayer Nativo por detrás */
+html.native-playing,
+html.native-playing body,
+html.native-playing #root,
+html.native-playing .player-layout,
+html.native-playing .layout-col-center,
+html.native-playing .layout-col-center.fullscreen-active {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+html.native-playing ::backdrop,
+html.native-playing *::backdrop {
   background: transparent !important;
   background-color: transparent !important;
 }
