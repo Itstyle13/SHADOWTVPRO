@@ -24,3 +24,17 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Android
+.gradle/
+build/
+local.properties
+*/.gradle/
+*/build/
+*/local.properties
+Android Cel/.gradle/
+Android Cel/build/
+Android Cel/app/build/
+Android Smart Tv/.gradle/
+Android Smart Tv/build/
+Android Smart Tv/app/build/

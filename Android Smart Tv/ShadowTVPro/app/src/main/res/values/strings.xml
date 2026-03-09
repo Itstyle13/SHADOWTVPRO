@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Shadow TV PRO</string>
+    <string name="login_title">SHADOW TV PRO</string>
+    <string name="login_subtitle">Ingresa tus credenciales</string>
+    <string name="username_hint">Usuario</string>
+    <string name="password_hint">Contraseña</string>
+    <string name="login_button">INGRESAR</string>
+    <string name="logout">Salir</string>
+    <string name="tv_live">TV</string>
+    <string name="movies">PELÍCULAS</string>
+    <string name="series">SERIES</string>
+    <string name="loading">Cargando…</string>
+    <string name="error_connection">No se pudo conectar al servidor</string>
+    <string name="error_invalid_credentials">Usuario o contraseña incorrectos</string>
+    <string name="subscription_expired">SUSCRIPCIÓN VENCIDA</string>
+    <string name="no_channels">Sin canales disponibles</string>
+    <string name="all_categories">Todas</string>
+    <string name="search_hint">Buscar…</string>
+    <string name="tagline">Tu entretenimiento sin límites</string>
+    <string name="channel_number">Canal</string>
+    <string name="audio_track">Pista de audio</string>
+    <string name="subtitle_track">Subtítulos</string>
+    <string name="fit_label">Ajuste</string>
+</resources>
