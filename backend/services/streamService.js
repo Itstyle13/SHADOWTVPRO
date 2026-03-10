@@ -101,6 +101,19 @@ async function serveDirectStream(targetUrl, ext, request, reply, type, httpsAgen
         }
 
         reply.header('X-Stream-Proxy', 'backend-modular');
+
+        // Destruir el socket de origen si el cliente (Android/Web) se desconecta
+        // Esto evita conexiones fantasmas en el panel de Xtream
+        if (request && request.raw) {
+            request.raw.on('close', () => {
+                try {
+                    if (response.data && typeof response.data.destroy === 'function') {
+                        response.data.destroy();
+                    }
+                } catch (e) { }
+            });
+        }
+
         return reply.send(response.data);
 
     } catch (error) {
