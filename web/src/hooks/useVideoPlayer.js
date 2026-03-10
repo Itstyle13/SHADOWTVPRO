@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import Hls from 'hls.js';
 import mpegts from 'mpegts.js';
+
+const NativePlayer = registerPlugin('NativePlayer');
 
 export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMuted, callbacks = {} }) => {
     const mpegtsPlayerRef = useRef(null);
@@ -10,6 +13,7 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
 
     // Watchdog and Reconnection State
     const watchdogRef = useRef(null);
+    const progressIntervalRef = useRef(null);
     const retryCountRef = useRef(0);
     const lastPosRef = useRef(0);
     const lastTimeRef = useRef(0);
@@ -18,6 +22,10 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
     const MAX_RETRIES = 5; // Reducido de 10 a 5 — si falla 5 veces es problema del servidor, no de la app
 
     const cleanupPlayers = () => {
+        if (Capacitor?.isNativePlatform?.()) {
+            try { NativePlayer.stop(); } catch (e) { }
+        }
+
         if (mpegtsPlayerRef.current) {
             try { mpegtsPlayerRef.current.destroy(); } catch (e) { }
             mpegtsPlayerRef.current = null;
@@ -32,6 +40,10 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
         if (watchdogRef.current) {
             clearInterval(watchdogRef.current);
             watchdogRef.current = null;
+        }
+        if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current);
+            progressIntervalRef.current = null;
         }
     };
 
@@ -93,24 +105,40 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             lastPosRef.current = videoElement.current?.currentTime || 0;
             lastTimeRef.current = Date.now();
 
-            watchdogRef.current = setInterval(() => {
-                const video = videoElement.current;
-                if (!video) return;
+            watchdogRef.current = setInterval(async () => {
+                let currentPos = 0;
+                let isPaused = false;
+                let isReady = false;
 
-                const currentPos = video.currentTime;
+                if (Capacitor?.isNativePlatform?.()) {
+                    try {
+                        const progress = await NativePlayer.getProgress();
+                        currentPos = progress?.currentTime || 0;
+                        // Asumimos que no está pausado si estamos en native y evaluando watchdog,
+                        // a menos que podamos obtener el state. Por simplicidad, si no avanza, reconecta.
+                    } catch (e) { }
+                } else {
+                    const video = videoElement.current;
+                    if (!video) return;
+                    currentPos = video.currentTime;
+                    isPaused = video.paused;
+                    isReady = video.readyState >= 3;
+                }
+
                 const now = Date.now();
 
                 // Período de gracia — no actuar hasta que haya pasado suficiente tiempo
                 if (now - startTime < gracePeriod) return;
 
-                const isPaused = video.paused;
-
-                // Si está pausado intencionalmente, no hacer nada
-                if (isPaused && video.readyState >= 3) return;
+                // Si está pausado intencionalmente, no hacer nada (solo HTML5)
+                if (isPaused && isReady) return;
 
                 if (!isPaused) {
-                    if (currentPos > lastPosRef.current) {
-                        // El video avanza normalmente — reseteamos el reloj
+                    // Para Live TV en reproductores nativos como ExoPlayer, el time window puede 
+                    // desplazarse hacia atrás o fluctuar. Por eso comprobamos si ha cambiado (se ha movido) 
+                    // en lugar de obligar a que sea estrictamente mayor.
+                    if (Math.abs(currentPos - lastPosRef.current) > 0.2) {
+                        // El video se está moviendo normalmente — reseteamos el reloj de estancamiento
                         lastPosRef.current = currentPos;
                         lastTimeRef.current = now;
                         // Si se recuperó sola, reseteamos el contador de reintentos
@@ -118,15 +146,49 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                             retryCountRef.current = 0;
                         }
                     } else if (now - lastTimeRef.current > stagnationThreshold) {
-                        // El video lleva mucho tiempo sin avanzar — reintentar
+                        // El video lleva mucho tiempo sin moverse en absoluto — reintentar
                         console.warn(`[VideoPlayer] Watchdog: video estancado por ${stagnationThreshold / 1000}s en pos=${currentPos}`);
                         lastTimeRef.current = now; // Reset para evitar loops inmediatos
                         reinit('stagnation');
                     }
                 }
-                // Nota: eliminamos el trigger de 'waiting/buffering infinito' porque
-                // los streams HLS pueden tener buffering normal durante cambios de segmento
             }, 5000); // Revisión cada 5s en vez de cada 2s — menos agresivo
+        };
+
+        const startCapacitorNative = async () => {
+            if (!isMounted) return;
+            cleanupPlayers();
+            stopWatchdog();
+
+            const extension = stream.container_extension ? `.${stream.container_extension}` : (type === 'live' ? '.ts' : '.mp4');
+            let finalUrl = stream.url;
+
+            if (!finalUrl) {
+                finalUrl = `${API_BASE}/stream/${type}/${activeStreamKey}${extension}?token=${token}`;
+            }
+            finalUrl = finalUrl.replace(/([^:])\/\//g, '$1/');
+
+            try {
+                await NativePlayer.play({ url: finalUrl });
+                if (isMuted) await NativePlayer.setMuted({ muted: true });
+
+                callbacks.onLoadStart?.();
+                setTimeout(() => callbacks.onLoadEnd?.(), 1500);
+
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                progressIntervalRef.current = setInterval(async () => {
+                    try {
+                        const progress = await NativePlayer.getProgress();
+                        if (progress && progress.currentTime !== undefined) {
+                            callbacks.onTimeUpdate?.(progress.currentTime);
+                            if (progress.duration > 0) callbacks.onDurationChange?.(progress.duration);
+                        }
+                    } catch (e) { }
+                }, 1000);
+            } catch (e) {
+                console.error("[VideoPlayer] Falló NativePlayerPlugin, fallback HTML5:", e);
+                startNative(finalUrl);
+            }
         };
 
         const startNative = (url) => {
@@ -178,8 +240,11 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 cors: true
             }, {
                 enableWorker: true,
-                enableStashBuffer: false,
+                enableStashBuffer: true,
+                stashInitialSize: 384 * 1024,
                 autoCleanupSourceBuffer: true,
+                autoCleanupMaxBackwardDuration: 180, // Mantener hasta 3 min atrás (Timeshift)
+                autoCleanupMinBackwardDuration: 120,
                 fixAudioTimestampGap: true,
                 liveBufferLatencyChasing: false,
                 lowLatencyMode: false,
@@ -233,10 +298,13 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                     fragLoadingMaxRetry: 3,
                     // Desactivar modo baja latencia para streams HLS estándar (reduce reconexiones)
                     lowLatencyMode: false,
-                    liveSyncDurationCount: 3,
-                    backBufferLength: 60, // Más buffer para reducir stutter
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60,
+                    // Client-Side Timeshift & Base Smart Buffer Limits
+                    liveSyncDurationCount: 6, // Empezar más lejos del final del streaming (margen de seguridad de ~18-30s si los trozos son de 3-5s)
+                    liveMaxLatencyDurationCount: 15,
+                    backBufferLength: 180, // Retener 3 minutos hacia atrás
+                    maxBufferLength: 60,   // Buffer objetivo inicial subido a 60s (evita que se pause la descarga)
+                    maxMaxBufferLength: 180, // Límite máximo para pausar (3 minutos)
+                    maxBufferSize: 60 * 1000 * 1000, // Permitir usar hasta 60MB en memoria RAM para buffer (mejora estabilidad si hay bitrate alto)
                     // Tiempos de espera más generosos
                     manifestLoadingTimeOut: 15000,
                     levelLoadingTimeOut: 15000,
@@ -300,6 +368,16 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
         const handleWaiting = () => {
             // Solo notificar al UI de loading — NO reconectar
             callbacks.onLoadStart?.();
+
+            // Smart Buffer Logic: Aumentar tamaño del buffer objetivo si hay red inestable
+            if (hlsPlayerRef.current) {
+                const currentMax = hlsPlayerRef.current.config.maxBufferLength;
+                const newMax = Math.min(180, currentMax + 15);
+                if (currentMax !== newMax) {
+                    hlsPlayerRef.current.config.maxBufferLength = newMax;
+                    console.log(`[SmartBuffer] Red inestable detectada (rebuffering). Aumentando buffer a ${newMax}s`);
+                }
+            }
         };
 
         const handleVideoError = () => {
@@ -373,7 +451,9 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             const streamPath = (stream.url || activeStreamKey || '').toString().toLowerCase();
 
             try {
-                if (type === 'vod' || type === 'series') {
+                if (Capacitor.isNativePlatform()) {
+                    await startCapacitorNative();
+                } else if (type === 'vod' || type === 'series') {
                     startNative();
                 } else if (streamPath.includes('.ts')) {
                     await startMpegTs();

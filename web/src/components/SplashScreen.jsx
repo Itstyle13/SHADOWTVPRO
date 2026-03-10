@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import ShadowLogo from './ShadowLogo';
+
 
 const SplashScreen = ({ onComplete, isReady }) => {
     const [fadeOut, setFadeOut] = useState(false);
@@ -40,10 +40,10 @@ const SplashScreen = ({ onComplete, isReady }) => {
     return (
         <div className={`splash-container ${fadeOut ? 'fade-out' : ''}`}>
             <div className="splash-content">
-                {/* Logo SVG animado */}
+                {/* Logo SVG animado -> Changed to PNG Logo */}
                 <div className="splash-logo-wrapper">
                     <div className="splash-glow-ring" />
-                    <ShadowLogo size={52} className="splash-svg-logo" />
+                    <img src="/logo512.png" alt="SHADOW TV PRO" className="splash-png-logo" width="120" height="120" />
                 </div>
 
                 <p className="splash-tagline">Tu entretenimiento sin límites</p>
@@ -95,9 +95,10 @@ const SplashScreen = ({ onComplete, isReady }) => {
                     animation: glowPulse 2s ease-in-out infinite;
                 }
 
-                .splash-svg-logo {
+                .splash-png-logo {
                     position: relative;
                     z-index: 1;
+                    border-radius: 12px;
                 }
 
                 @keyframes splashLogoIn {

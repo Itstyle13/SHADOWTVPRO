@@ -1,5 +1,8 @@
-import React, { useImperativeHandle } from 'react';
+import React, { useImperativeHandle, useEffect } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { useVideoPlayer } from '../hooks/useVideoPlayer';
+
+const NativePlayer = registerPlugin('NativePlayer');
 
 const VideoPlayer = React.forwardRef(({
     stream,
@@ -19,15 +22,33 @@ const VideoPlayer = React.forwardRef(({
 
     useImperativeHandle(ref, () => ({
         get current() { return videoElement.current; },
-        play: () => videoElement.current?.play(),
-        pause: () => videoElement.current?.pause(),
+        play: () => {
+            if (Capacitor.isNativePlatform()) NativePlayer.resume();
+            else videoElement.current?.play();
+        },
+        pause: () => {
+            if (Capacitor.isNativePlatform()) NativePlayer.pause();
+            else videoElement.current?.pause();
+        },
+        seek: (time) => {
+            if (Capacitor.isNativePlatform()) NativePlayer.seekTo({ time });
+            else if (videoElement.current) videoElement.current.currentTime = time;
+        },
         setAudioTrack: (index) => {
-            if (hlsPlayerRef.current) hlsPlayerRef.current.audioTrack = index;
+            if (Capacitor.isNativePlatform()) NativePlayer.setTrack({ type: 'audio', id: String(index) });
+            else if (hlsPlayerRef.current) hlsPlayerRef.current.audioTrack = index;
         },
         setSubtitleTrack: (index) => {
-            if (hlsPlayerRef.current) hlsPlayerRef.current.subtitleTrack = index;
+            if (Capacitor.isNativePlatform()) NativePlayer.setTrack({ type: 'text', id: String(index) });
+            else if (hlsPlayerRef.current) hlsPlayerRef.current.subtitleTrack = index;
         }
     }));
+
+    useEffect(() => {
+        if (Capacitor.isNativePlatform()) {
+            NativePlayer.setObjectFit({ fit: objectFit });
+        }
+    }, [objectFit]);
 
 
 

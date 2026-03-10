@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
 import axios from 'axios';
 import PlayerInterface from './PlayerComponents/PlayerInterface';
 import VideoPlayer from './VideoPlayer';
@@ -36,8 +37,14 @@ const Player = () => {
     const [currentAudioTrack, setCurrentAudioTrack] = useState(-1);
     const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1);
     const [currentTime, setCurrentTime] = useState(0);
-    const [duration, setDuration] = useState(0);
+    const [duration, setDurationState] = useState(0);
+    const durationRef = useRef(0);
+    const setDuration = useCallback((val) => {
+        durationRef.current = val;
+        setDurationState(val);
+    }, []);
     const [videoObjectFit, setVideoObjectFit] = useState('contain');
+    const [isBehindLive, setIsBehindLive] = useState(false);
     // Helper to preload images
     const preloadSectionImages = useCallback(async (list, type) => {
         if (!list || list.length === 0) {
@@ -195,11 +202,58 @@ const Player = () => {
     };
 
     const handleSeek = (time) => {
-        if (videoRef.current?.current) {
+        if (Capacitor?.isNativePlatform?.()) {
+            // Se envía a ref actual si VideoPlayer lo implementase, o usamos el store de plugins global. 
+            // En nuestro caso en VideoPlayer usamos "videoRef.current" y deberíamos añadirle "seek(time)"
+            // Pero dado que VideoPlayer.jsx no expone seekTo en su useImperativeHandle actualmente,
+            // y no queremos reescribir mucho, podemos llamar directamente a Capacitor/NativePlayer si queremos, o mejor,
+            // actualizamos VideoPlayer para que sí exponga "seek". Como ya lo actualizamos asumiendo NativePlayer,
+            // vamos a requerir que VideoPlayer exponga seek().
+            if (videoRef.current?.seek) {
+                videoRef.current.seek(time);
+            }
+        } else if (videoRef.current?.current) {
             videoRef.current.current.currentTime = time;
-            setCurrentTime(time);
         }
+        setCurrentTime(time);
     };
+
+    const handleTimeUpdate = useCallback((time) => {
+        setCurrentTime(time);
+
+        if (selectedType === 'live') {
+            if (Capacitor?.isNativePlatform?.()) {
+                const dur = durationRef.current;
+                if (dur && isFinite(dur)) {
+                    setIsBehindLive(dur - time > 15);
+                } else {
+                    setIsBehindLive(false);
+                }
+            } else if (videoRef?.current?.current) {
+                const video = videoRef.current.current;
+                if (video.buffered && video.buffered.length > 0) {
+                    const bufferEnd = video.buffered.end(video.buffered.length - 1);
+                    setIsBehindLive(bufferEnd - time > 15);
+                }
+            }
+        } else {
+            setIsBehindLive(false);
+        }
+    }, [selectedType]);
+
+    const handleGoLive = useCallback(() => {
+        if (Capacitor?.isNativePlatform?.()) {
+            const dur = durationRef.current;
+            if (dur && isFinite(dur)) {
+                handleSeek(dur - 2);
+            }
+        } else if (videoRef.current?.current) {
+            const video = videoRef.current.current;
+            if (video.buffered && video.buffered.length > 0) {
+                video.currentTime = video.buffered.end(video.buffered.length - 1) - 2;
+            }
+        }
+    }, []);
 
     const FIT_MODES = ['contain', '16:9', '4:3'];
     const FIT_LABELS = { contain: 'Original', '16:9': '16:9', '4:3': '4:3' };
@@ -400,6 +454,8 @@ const Player = () => {
                         duration={duration}
                         onSeek={handleSeek}
                         selectedType={selectedType}
+                        isBehindLive={isBehindLive}
+                        goLive={handleGoLive}
                     >
                         <VideoPlayer
                             ref={videoRef}
@@ -410,7 +466,7 @@ const Player = () => {
                             isMuted={isMuted}
                             onLoadStart={() => setIsLoading(true)}
                             onLoadEnd={() => setIsLoading(false)}
-                            onTimeUpdate={setCurrentTime}
+                            onTimeUpdate={handleTimeUpdate}
                             onDurationChange={setDuration}
                             onError={(e) => {
                                 setError(e.message);

@@ -27,7 +27,9 @@ const PlayerInterface = forwardRef(({
     currentTime,
     duration,
     onSeek,
-    selectedType
+    selectedType,
+    isBehindLive,
+    goLive
 }, videoRef) => {
     const formatTime = (time) => {
         if (isNaN(time)) return "0:00";
@@ -155,6 +157,11 @@ const PlayerInterface = forwardRef(({
                         <div className="nav-btn small-btn fit-btn" onClick={onToggleFit} title="Cambiar tamaño">
                             <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px' }}>{fitLabel || 'Original'}</span>
                         </div>
+                        {isBehindLive && (
+                            <div className="nav-btn small-btn fit-btn live-btn" onClick={goLive} title="Volver al directo">
+                                <span style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '0.5px', color: '#ff4444' }}>🔴 GO LIVE</span>
+                            </div>
+                        )}
                         <div className="nav-btn small-btn" onClick={handleFullscreen} title="Salir de pantalla completa">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
                                 <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
@@ -339,6 +346,16 @@ const PlayerInterface = forwardRef(({
                     width: auto;
                     padding: 0 12px;
                     border-radius: 20px;
+                }
+
+                .nav-btn.live-btn {
+                    background: rgba(255,68,68,0.15);
+                    border: 1px solid rgba(255,68,68,0.4);
+                    box-shadow: 0 0 10px rgba(255,68,68,0.2);
+                }
+
+                .nav-btn.live-btn:hover {
+                    background: rgba(255,68,68,0.3);
                 }
 
                 .error-overlay {

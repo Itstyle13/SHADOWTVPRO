@@ -63,11 +63,43 @@ public class MainActivity extends BridgeActivity {
         // 4. Añadirlo detrás del WebView (index 0)
         parent.addView(playerView, 0);
 
-        player = new ExoPlayer.Builder(this).build();
+        androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        30000,  // minBufferMs (aumentado para mayor estibilidad, Smart Buffer base)
+                        180000, // maxBufferMs (3 minutos para Timeshift local)
+                        1500,   // bufferForPlaybackMs (carga rápida al inicio)
+                        5000    // bufferForPlaybackAfterRebufferMs (evita cortes consecutivos)
+                ).build();
+
+        player = new ExoPlayer.Builder(this)
+                .setLoadControl(loadControl)
+                .build();
+        
+        player.addListener(new androidx.media3.common.Player.Listener() {
+            @Override
+            public void onPlayerError(androidx.media3.common.PlaybackException error) {
+                // Delegamos la reconexión inteligente al Watchdog de React (useVideoPlayer.js)
+                // Anteriormente, llamar a playVideo(currentUrl) aquí causaba un bucle infinito
+                // de 2 segundos si el servidor Xtream enviaba un error temporal o cerraba la conexión.
+                System.out.println("ExoPlayer Error: " + error.getMessage());
+            }
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == androidx.media3.common.Player.STATE_ENDED) {
+                    // Igual que arriba, si el stream termina (microcorte), dejamos que React 
+                    // decida cuándo y cómo reconectar usando su backoff exponencial.
+                    System.out.println("ExoPlayer ended.");
+                }
+            }
+        });
+
         playerView.setPlayer(player);
     }
 
+    private String currentUrl;
+
     public void playVideo(String url) {
+        currentUrl = url;
         runOnUiThread(() -> {
             if (player == null) setupPlayer();
 

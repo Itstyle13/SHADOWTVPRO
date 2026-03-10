@@ -112,10 +112,16 @@ class ContentController {
         if (!xtream_url) return reply.code(400).send({ error: 'Falta configurar servidor' });
         const server = xtream_url.replace(/\/$/, '');
         const streamId = id.split('.')[0];
+        const requestedExt = id.includes('.') ? id.split('.').pop() : '';
         const path = type === 'series' ? 'series' : (type === 'vod' ? 'movie' : 'live');
 
         try {
             if (type === 'live') {
+                if (requestedExt === 'ts') {
+                    const tsUrl = `${server}/live/${username}/${xtream_password}/${streamId}.ts`;
+                    return streamService.serveDirectStream(tsUrl, 'ts', request, reply, type, httpsAgent);
+                }
+
                 const m3u8Url = `${server}/live/${username}/${xtream_password}/${streamId}.m3u8`;
                 const cached = streamService.formatCache.get(streamId);
                 const now = Date.now();
