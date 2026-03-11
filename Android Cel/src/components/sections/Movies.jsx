@@ -1,9 +1,72 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import axios from 'axios';
+import { List } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
+import { getHistory } from '../../utils/history';
+
+const MovieCard = memo(({ data, columnIndex, rowIndex, style }) => {
+    const { items, columnCount, onPlay, API_BASE } = data;
+    const index = rowIndex * columnCount + columnIndex;
+    const item = items[index];
+
+    if (!item) return null;
+
+    const iconUrl = item.stream_icon || item.cover;
+    const proxiedIcon = iconUrl ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(iconUrl)}&name=${encodeURIComponent(item.name || '')}` : "/logo_splash.png";
+
+    return (
+        <div style={{
+            ...style,
+            padding: '10px',
+            boxSizing: 'border-box'
+        }}>
+            <div className="movie-card-premium" onClick={() => onPlay(item)}>
+                <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} />
+                {item.savedTime > 0 && item.savedDuration > 0 && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'rgba(255,255,255,0.2)', width: '100%', zIndex: 12 }}>
+                        <div style={{ width: `${(item.savedTime / item.savedDuration) * 100}%`, height: '100%', background: '#ff4444' }}></div>
+                    </div>
+                )}
+                <div className="movie-card-overlay">
+                    <div className="movie-card-title">{item.name}</div>
+                    <div className="movie-card-info">{item.name.match(/\((19|20)\d{2}\)/) ? item.name.match(/\((19|20)\d{2}\)/)[0].replace(/[()]/g, '') : ''}</div>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+const MovieRow = memo((props) => {
+    const data = props.data || props;
+    const { items, columnCount, onPlay, API_BASE } = data;
+    const index = props.rowIndex !== undefined ? props.rowIndex : props.index;
+    const style = props.style;
+
+    const startIndex = index * columnCount;
+    const rowItems = [];
+    for (let i = 0; i < columnCount; i++) {
+        rowItems.push(items[startIndex + i]);
+    }
+
+    return (
+        <div style={{ ...style, display: 'flex' }}>
+            {rowItems.map((item, i) => (
+                <MovieCard
+                    key={item?.stream_id || startIndex + i}
+                    data={data}
+                    columnIndex={i}
+                    rowIndex={index}
+                    style={{ width: `${100 / columnCount}%`, height: '100%', position: 'relative' }}
+                />
+            ))}
+        </div>
+    );
+});
 
 const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType, setNavigationHandlers }) => {
     const [categories, setCategories] = useState([]);
     const [allStreams, setAllStreams] = useState([]);
+    const [recentStreams, setRecentStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -11,10 +74,9 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [showSort, setShowSort] = useState(false);
     const [sortBy, setSortBy] = useState('added');
-    const [visibleCount, setVisibleCount] = useState(50);
 
     const categoriesRef = useRef(null);
-    const contentAreaRef = useRef(null);
+    const listRef = useRef(null);
     const hasReportedInitial = useRef(false);
 
     // Fetch Initial Data
@@ -27,21 +89,20 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     axios.get(`${API_BASE}/streams/vod`, { headers: { Authorization: `Bearer ${token}` } })
                 ]);
 
-                // Optimización: Calcular conteos en una sola pasada (O(N))
                 const counts = {};
                 streamRes.data.forEach(s => {
                     counts[s.category_id] = (counts[s.category_id] || 0) + 1;
                 });
 
-                const enrichedCategories = catRes.data.map(cat => ({
+                const enrichedCategories = (catRes.data || []).map(cat => ({
                     ...cat,
                     count: counts[cat.category_id] || 0
                 }));
 
                 setCategories(enrichedCategories);
-                setAllStreams(streamRes.data);
+                setAllStreams(streamRes.data || []);
                 if (!hasReportedInitial.current) {
-                    onDataLoaded?.('vod', streamRes.data);
+                    onDataLoaded?.('vod', streamRes.data || []);
                     hasReportedInitial.current = true;
                 }
             } catch (err) {
@@ -58,7 +119,12 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         loadInitialData();
     }, [API_BASE, token]);
 
-
+    // Load History
+    useEffect(() => {
+        if (showChannels && selectedType === 'vod') {
+            setRecentStreams(getHistory('vod'));
+        }
+    }, [showChannels, selectedType]);
 
     // Debounce Search
     useEffect(() => {
@@ -68,17 +134,15 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
     // Optimized Filtering & Sorting via useMemo
     const filteredStreams = useMemo(() => {
+        if (selectedCategory === 'recent') return recentStreams;
         let result = [...allStreams];
-
         if (selectedCategory !== 'all') {
             result = result.filter(s => s.category_id === selectedCategory);
         }
-
         if (debouncedSearch) {
             const query = debouncedSearch.toLowerCase();
             result = result.filter(s => s.name?.toLowerCase().includes(query));
         }
-
         switch (sortBy) {
             case 'az': result.sort((a, b) => (a.name || '').localeCompare(b.name || '')); break;
             case 'za': result.sort((a, b) => (b.name || '').localeCompare(a.name || '')); break;
@@ -86,41 +150,26 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
             case 'rating': result.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break;
             default: break;
         }
-
         return result;
-    }, [selectedCategory, allStreams, debouncedSearch, sortBy]);
+    }, [selectedCategory, allStreams, debouncedSearch, sortBy, recentStreams]);
 
-    // Setup Navigation Handlers for internal Next/Prev UI
+    // Setup Navigation Handlers
     useEffect(() => {
         if (!setNavigationHandlers) return;
         const handleNext = () => {
             if (!currentStream) return;
-            const idx = filteredStreams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
-            if (idx >= 0 && idx < filteredStreams.length - 1) { onPlayStream(filteredStreams[idx + 1], 'vod'); setShowChannels(false); }
+            const streams = filteredStreams || [];
+            const idx = streams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
+            if (idx >= 0 && idx < streams.length - 1) { onPlayStream(streams[idx + 1], 'vod'); setShowChannels(false); }
         };
         const handlePrev = () => {
             if (!currentStream) return;
-            const idx = filteredStreams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
-            if (idx > 0) { onPlayStream(filteredStreams[idx - 1], 'vod'); setShowChannels(false); }
+            const streams = filteredStreams || [];
+            const idx = streams.findIndex(s => (s.stream_id || s.id) === (currentStream.stream_id || currentStream.id));
+            if (idx > 0) { onPlayStream(streams[idx - 1], 'vod'); setShowChannels(false); }
         };
-        setNavigationHandlers({ next: handleNext, prev: handlePrev });
+        setNavigationHandlers('vod', { next: handleNext, prev: handlePrev });
     }, [currentStream, filteredStreams, setNavigationHandlers, onPlayStream, setShowChannels]);
-
-    // Reset visible count on filter change
-    useEffect(() => {
-        setVisibleCount(50);
-        if (contentAreaRef.current) contentAreaRef.current.scrollTop = 0;
-    }, [selectedCategory, debouncedSearch, sortBy]);
-
-    // Infinite Scroll Implementation
-    const handleScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        if (scrollHeight - scrollTop <= clientHeight + 500) {
-            if (visibleCount < filteredStreams.length) {
-                setVisibleCount(prev => prev + 50);
-            }
-        }
-    };
 
     const handleBack = () => {
         if (document.fullscreenElement) {
@@ -149,12 +198,13 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         za: 'Pedido por Z-A'
     };
 
-    if (loading && categories.length === 0) return <div className="loading-center"><div className="spinner"></div></div>;
+    if (loading && categories.length === 0) return <div className="loading-center" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'white', background: '#000' }}><div className="spinner"></div><p>Cargando Películas...</p></div>;
+    if (error && allStreams.length === 0) return <div className="error-center" style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ff4444', background: '#000' }}><h2>⚠️ {error}</h2><button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '20px' }}>Reintentar</button></div>;
 
-    const currentCategoryName = selectedCategory === 'all' ? 'TODO' : categories.find(c => c.category_id === selectedCategory)?.category_name || '';
+    const currentCategoryName = selectedCategory === 'all' ? 'TODO' : (selectedCategory === 'recent' ? 'VISTO RECIENTEMENTE' : categories.find(c => c.category_id === selectedCategory)?.category_name || '');
+
     return (
         <div className="movie-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'column', background: 'radial-gradient(circle at 20% 50%, rgba(20, 20, 35, 0.95) 0%, rgba(5, 5, 5, 0.98) 100%)' }}>
-            {/* Top Navigation */}
             <div className="movie-top-nav">
                 <div className="movie-top-links">
                     <div className="movie-nav-item" onClick={() => { setSelectedType('live', false, true); setShowChannels(true); }}>TV en vivo</div>
@@ -183,7 +233,6 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
             <div className="movie-hub-body" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                 <div className="movie-sidebar">
-
                     <div className="sidebar-header">
                         <div className="logo-section" style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
                             <div className="video-icon" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '4px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -207,6 +256,12 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     </div>
 
                     <div className="categories-scroll-area" ref={categoriesRef}>
+                        {recentStreams.length > 0 && (
+                            <div className={`movie-category-item ${selectedCategory === 'recent' ? 'active' : ''}`} onClick={() => setSelectedCategory('recent')}>
+                                <span>Visto recientemente</span>
+                                <span className="category-count">{recentStreams.length}</span>
+                            </div>
+                        )}
                         <div className={`movie-category-item ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => setSelectedCategory('all')}>
                             <span>ALL</span>
                             <span className="category-count">{allStreams.length}</span>
@@ -228,7 +283,7 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     </div>
                 </div>
 
-                <div className="movie-content-area" ref={contentAreaRef} onScroll={handleScroll}>
+                <div className="movie-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <div className="movie-top-bar">
                         <div className="sort-dropdown" onClick={() => setShowSort(!showSort)}>
                             {SORT_LABELS[sortBy]}
@@ -237,7 +292,7 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                             </svg>
                             {showSort && (
                                 <div className="sort-options">
-                                    {Object.entries(SORT_LABELS).map(([key, label]) => (
+                                    {Object.entries(SORT_LABELS || {}).map(([key, label]) => (
                                         <div key={key} className="sort-option" onClick={(e) => { e.stopPropagation(); setSortBy(key); setShowSort(false); }}>
                                             {label}
                                         </div>
@@ -253,27 +308,41 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         </div>
                     </div>
 
-                    <div className="movie-poster-grid">
-                        {filteredStreams.slice(0, visibleCount).map(item => {
-                            const iconUrl = item.stream_icon || item.cover;
-                            const proxiedIcon = iconUrl ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(iconUrl)}&name=${encodeURIComponent(item.name || '')}` : "/logo_splash.png";
-                            return (
-                                <div key={item.stream_id} className="movie-card-premium" onClick={() => handlePlay(item)}>
-                                    <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} />
-                                    <div className="movie-card-overlay">
-                                        <div className="movie-card-title">{item.name}</div>
-                                        <div className="movie-card-info">{item.name.match(/\((19|20)\d{2}\)/) ? item.name.match(/\((19|20)\d{2}\)/)[0].replace(/[()]/g, '') : ''}</div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <div className="movie-virtual-grid-wrapper" style={{ flex: 1, minHeight: 0, position: 'relative', width: '100%', height: '100%', boxSizing: 'border-box' }}>
+                        <AutoSizer renderProp={({ height, width }) => {
+                                const finalHeight = height || 600;
+                                const finalWidth = width || 800;
+                                if (height === 0 || width === 0) {
+                                    return <div style={{ height: '100%', width: '100%', background: 'rgba(255,0,0,0.5)', color: 'white', padding: '10px', fontSize: '20px', fontWeight: 'bold' }}>⚠️ ERROR MOVIES DIM: H={height} W={width}</div>;
+                                }
+                                const minCardWidth = 180;
+                                const columnCount = Math.max(1, Math.floor(finalWidth / minCardWidth));
+                                const rowCount = Math.ceil(filteredStreams.length / columnCount);
+                                const columnWidth = finalWidth / columnCount;
+                                const rowHeight = columnWidth * 1.5;
 
-                    {visibleCount < filteredStreams.length && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                            Cargando más contenido...
-                        </div>
-                    )}
+                                const itemData = {
+                                    items: filteredStreams,
+                                    columnCount,
+                                    onPlay: handlePlay,
+                                    API_BASE
+                                };
+
+                                return (
+                                    <List
+                                        rowCount={rowCount}
+                                        rowHeight={rowHeight}
+                                        rowProps={itemData}
+                                        rowComponent={MovieRow}
+                                        className="movies-scroll-container"
+                                        style={{ 
+                                            height: finalHeight, 
+                                            width: finalWidth
+                                        }}
+                                    />
+                                );
+                            }} />
+                    </div>
                 </div>
             </div>
         </div>

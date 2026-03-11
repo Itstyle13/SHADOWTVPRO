@@ -96,8 +96,10 @@ const VideoPlayer = React.forwardRef(({
     useEffect(() => {
         if (isNative && stream) {
             const activeStreamKey = (stream.stream_id || stream.id || stream.movie_id || stream.series_id);
-            const extension = stream.container_extension ? `.${stream.container_extension}` : (type === 'live' ? '.m3u8' : '');
-            const finalUrl = `${API_BASE}/stream/${type}/${activeStreamKey}${extension}?token=${token}`;
+            // FORZAR .ts para Live TV para evitar los problemas de conexiones múltiples HLS
+            const extension = type === 'live' ? '.ts' : (stream.container_extension ? `.${stream.container_extension}` : '.mp4');
+            const reconnectParam = stream._reconnect ? `&reconnect=${stream._reconnect}` : '';
+            const finalUrl = `${API_BASE}/stream/${type}/${activeStreamKey}${extension}?token=${token}${reconnectParam}`;
 
             // Añadir clase para hacer transparente el fondo del WebView
             document.documentElement.classList.add('native-playing');

@@ -1,6 +1,6 @@
 {
   "appId": "com.shadowtv.mobile",
-  "appName": "Shadow TV Mobile",
+  "appName": "Shadow TV",
   "webDir": "dist",
   "plugins": {
     "StatusBar": {

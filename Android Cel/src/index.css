@@ -28,7 +28,9 @@ html.native-playing body,
 html.native-playing #root,
 html.native-playing .player-layout,
 html.native-playing .layout-col-center,
-html.native-playing .layout-col-center.fullscreen-active {
+html.native-playing .layout-col-center.fullscreen-active,
+html.native-playing .video-container,
+html.native-playing .player-interface-inner {
   background: transparent !important;
   background-color: transparent !important;
 }
@@ -51,6 +53,97 @@ html.native-playing *::backdrop {
   background-color: #000000;
   overflow: hidden;
   color: #fff;
+}
+
+/* --- Layout General VOD/Series --- */
+.layout-vod-list, .layout-series-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.list-container {
+  flex: 1;
+  position: relative;
+  /* El contenido interno debe tener altura completa */
+}
+
+/* --- Reconnection Overlay --- */
+.reconnection-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    backdrop-filter: blur(8px);
+    z-index: 5; /* Por debajo de PlayerInterface que suele ser 10+ */
+    animation: fadeIn 0.5s ease-out;
+    pointer-events: none; /* Permite clicks a través de las zonas vacías */
+}
+
+.reconnection-overlay .tech-img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    margin-bottom: 20px;
+    animation: floatingTech 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.4));
+}
+
+@keyframes floatingTech {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
+}
+
+.reconnect-text-container {
+    text-align: center;
+    max-width: 400px;
+}
+
+.reconnect-text-container h2 {
+    font-size: 2rem;
+    color: #ef4444;
+    margin-bottom: 10px;
+    font-weight: 800;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+.reconnect-text-container p {
+    font-size: 1.1rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    opacity: 0.9;
+}
+
+.loading-dots {
+    margin-top: 15px;
+    font-size: 2rem;
+    color: #3b82f6;
+    letter-spacing: 5px;
+}
+
+.loading-dots span {
+    animation: dotPulse 1.4s infinite;
+    opacity: 0;
+}
+
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotPulse {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* --- Columnas del Nuevo Layout --- */
@@ -494,13 +587,19 @@ html.native-playing *::backdrop {
   text-transform: uppercase;
   letter-spacing: 1px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid transparent;
+  will-change: transform;
 }
 
 .category-horizontal-item:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+
+.category-horizontal-item:active {
+  transform: scale(0.95);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .category-horizontal-item.active {
@@ -700,9 +799,9 @@ html.native-playing *::backdrop {
 }
 
 .movie-top-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
 }
 
 .movie-sidebar {
@@ -863,8 +962,8 @@ html.native-playing *::backdrop {
 
 .movie-poster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px;
 }
 
 .movie-card-premium {
@@ -1211,8 +1310,8 @@ html.native-playing *::backdrop {
   }
 
   .movie-poster-grid {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
+    gap: 8px;
   }
 
   .current-category-title {
@@ -1257,8 +1356,8 @@ html.native-playing *::backdrop {
   }
 
   .movie-poster-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
   }
 
   .layout-col-right {

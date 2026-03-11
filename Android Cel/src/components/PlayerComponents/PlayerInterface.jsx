@@ -41,6 +41,46 @@ const PlayerInterface = forwardRef(({
         setTimeout(() => setTrackToast(null), 3000);
     };
 
+    const loadFavorites = React.useCallback(() => {
+        try {
+            const stored = localStorage.getItem('tv_favorites');
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    }, []);
+
+    const [favorites, setFavorites] = React.useState(loadFavorites);
+
+    React.useEffect(() => {
+        const handleFavoritesChanged = () => {
+            setFavorites(loadFavorites());
+        };
+        window.addEventListener('favorites_changed', handleFavoritesChanged);
+        return () => window.removeEventListener('favorites_changed', handleFavoritesChanged);
+    }, [loadFavorites]);
+
+    const handleToggleFavorite = () => {
+        if (!currentStream || selectedType !== 'live') return;
+        const streamId = currentStream.stream_id || currentStream.id;
+        if (!streamId) return;
+
+        setFavorites(prev => {
+            const idStr = streamId.toString();
+            const isFav = prev.includes(idStr);
+            const newFavs = isFav ? prev.filter(id => id !== idStr) : [...prev, idStr];
+            localStorage.setItem('tv_favorites', JSON.stringify(newFavs));
+            window.dispatchEvent(new Event('favorites_changed'));
+            return newFavs;
+        });
+    };
+
+    const isCurrentFavorite = React.useMemo(() => {
+        if (!currentStream || selectedType !== 'live') return false;
+        const streamId = (currentStream.stream_id || currentStream.id)?.toString();
+        return favorites.includes(streamId);
+    }, [currentStream, favorites, selectedType]);
+
     const formatTime = (time) => {
         if (isNaN(time)) return "0:00";
         const h = Math.floor(time / 3600);
@@ -173,15 +213,28 @@ const PlayerInterface = forwardRef(({
                             </div>
                         )}
                         {selectedType === 'live' && (
-                            <div className="nav-btn small-btn" onClick={() => {
-                                setShowChannels(true);
-                                setTimeout(() => {
-                                    const searchInput = document.getElementById('tvhub-search-input');
-                                    if (searchInput) searchInput.focus();
-                                }, 100);
-                            }} title="Buscar Canales">
-                                <span style={{ fontSize: '15px' }}>🔍</span>
-                            </div>
+                            <>
+                                <div className="nav-btn small-btn" onClick={handleToggleFavorite} title={isCurrentFavorite ? 'Quitar de Favoritos' : 'Añadir a Favoritos'}>
+                                    {isCurrentFavorite ? (
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="#ef4444" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(0 0 4px rgba(239, 68, 68, 0.4))' }}>
+                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                        </svg>
+                                    ) : (
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="transparent" stroke="currentColor" strokeWidth="2" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="nav-btn small-btn" onClick={() => {
+                                    setShowChannels(true);
+                                    setTimeout(() => {
+                                        const searchInput = document.getElementById('tvhub-search-input');
+                                        if (searchInput) searchInput.focus();
+                                    }, 100);
+                                }} title="Buscar Canales">
+                                    <span style={{ fontSize: '15px' }}>🔍</span>
+                                </div>
+                            </>
                         )}
                         <div className="nav-btn small-btn" onClick={() => setShowChannels(prev => !prev)} title="Ver Canales">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
@@ -291,8 +344,12 @@ const PlayerInterface = forwardRef(({
                 .player-controls-bottom {
                     position: absolute;
                     bottom: 16px;
-                    left: 50%;
-                    transform: translateX(-50%);
+                    bottom: 16px;
+                    left: 2%;
+                    right: 2%;
+                    width: 96%;
+                    max-width: 1200px;
+                    margin: 0 auto;
                     background: rgba(0,0,0,0.55);
                     backdrop-filter: blur(12px);
                     padding: 10px 18px;
@@ -355,10 +412,17 @@ const PlayerInterface = forwardRef(({
                     -webkit-appearance: none;
                     background: rgba(255,255,255,0.1);
                     border-radius: 3px;
+                    border-radius: 3px;
                     outline: none;
                     cursor: pointer;
                     position: relative;
                     z-index: 2;
+                }
+
+                /* Aumentar el area tactil del slider */
+                .vod-progress-bar::-webkit-slider-runnable-track {
+                    height: 20px;
+                    cursor: pointer;
                 }
 
                 .vod-progress-bar::-webkit-slider-thumb {

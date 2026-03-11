@@ -168,7 +168,8 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
         const startMpegTs = async () => {
             if (!isMounted) return;
             attempts.mpegts = true;
-            const url = `${API_BASE}/stream/${type}/${activeStreamKey}?token=${token}`;
+            const reconnectParam = stream._reconnect ? `&reconnect=${stream._reconnect}` : '';
+            const url = `${API_BASE}/stream/${type}/${activeStreamKey}?token=${token}${reconnectParam}`;
             if (!mpegts.isSupported()) return false;
 
             const player = mpegts.createPlayer({
@@ -178,7 +179,8 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 cors: true
             }, {
                 enableWorker: true,
-                enableStashBuffer: false,
+                enableStashBuffer: true, // Activado para absorber jitter de red y evitar distorsión
+                stashInitialSize: 384, // Tamaño inicial del buffer
                 autoCleanupSourceBuffer: true,
                 fixAudioTimestampGap: true,
                 liveBufferLatencyChasing: false,
@@ -222,15 +224,16 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
         const startHls = () => {
             if (!isMounted) return;
             attempts.hls = true;
-            const url = `${API_BASE}/stream/${type}/${activeStreamKey}.m3u8?token=${token}`;
+            const reconnectParam = stream._reconnect ? `&reconnect=${stream._reconnect}` : '';
+            const url = `${API_BASE}/stream/${type}/${activeStreamKey}.m3u8?token=${token}${reconnectParam}`;
 
             if (Hls.isSupported()) {
                 const hls = new Hls({
                     enableWorker: true,
                     // Reducir reintentos internos de HLS.js para no interferir con nuestro watchdog
-                    manifestLoadingMaxRetry: 3,
-                    levelLoadingMaxRetry: 3,
-                    fragLoadingMaxRetry: 3,
+                    manifestLoadingMaxRetry: 6,
+                    levelLoadingMaxRetry: 6,
+                    fragLoadingMaxRetry: 10, // Aumentado para ser muy persistente con segmentos corruptos
                     // Desactivar modo baja latencia para streams HLS estándar (reduce reconexiones)
                     lowLatencyMode: false,
                     liveSyncDurationCount: 3,

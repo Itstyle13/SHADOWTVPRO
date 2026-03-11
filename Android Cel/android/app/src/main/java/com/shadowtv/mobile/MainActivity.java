@@ -67,9 +67,11 @@ public class MainActivity extends BridgeActivity {
                 .setBufferDurationsMs(
                         30000,  // minBufferMs (aumentado para mayor estibilidad, Smart Buffer base)
                         180000, // maxBufferMs (3 minutos para Timeshift local)
-                        1500,   // bufferForPlaybackMs (carga rápida al inicio)
-                        5000    // bufferForPlaybackAfterRebufferMs (evita cortes consecutivos)
-                ).build();
+                        5000,   // bufferForPlaybackMs (carga inicial más pesada para evitar micro-congelamientos)
+                        8000    // bufferForPlaybackAfterRebufferMs (colchón extra tras un rebuffer)
+                )
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build();
 
         player = new ExoPlayer.Builder(this)
                 .setLoadControl(loadControl)
@@ -111,8 +113,10 @@ public class MainActivity extends BridgeActivity {
                         .setUri(videoUri)
                         .setMimeType(MimeTypes.APPLICATION_M3U8)
                         .build();
-                DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory();
+                DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                        .setAllowCrossProtocolRedirects(true);
                 HlsMediaSource hlsMediaSource = new HlsMediaSource.Factory(dataSourceFactory)
+                        .setAllowChunklessPreparation(true) // Prepara más rápido y con menos metadata
                         .createMediaSource(mediaItem);
                 player.setMediaSource(hlsMediaSource);
             } else {

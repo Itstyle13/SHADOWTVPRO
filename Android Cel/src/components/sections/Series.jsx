@@ -1,9 +1,72 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import axios from 'axios';
+import { List } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
+import { getHistory, getResumeTime } from '../../utils/history';
+
+const SeriesCard = memo(({ data, columnIndex, rowIndex, style }) => {
+    const { items, columnCount, onSelect, API_BASE } = data;
+    const index = rowIndex * columnCount + columnIndex;
+    const item = items[index];
+
+    if (!item) return null;
+
+    const iconUrl = item.cover || item.stream_icon;
+    const proxiedIcon = iconUrl ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(iconUrl)}&name=${encodeURIComponent(item.name || '')}` : "/logo_splash.png";
+
+    return (
+        <div style={{
+            ...style,
+            padding: '10px',
+            boxSizing: 'border-box'
+        }}>
+            <div className="movie-card-premium" onClick={() => onSelect(item)}>
+                <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} />
+                {item.savedTime > 0 && item.savedDuration > 0 && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'rgba(255,255,255,0.2)', width: '100%', zIndex: 12 }}>
+                        <div style={{ width: `${(item.savedTime / item.savedDuration) * 100}%`, height: '100%', background: '#ff4444' }}></div>
+                    </div>
+                )}
+                <div className="movie-card-overlay">
+                    <div className="movie-card-title">{item.name}</div>
+                    <div className="movie-card-info">{item.name.match(/\((19|20)\d{2}\)/) ? item.name.match(/\((19|20)\d{2}\)/)[0].replace(/[()]/g, '') : ''}</div>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+const SeriesRow = memo((props) => {
+    const data = props.data || props;
+    const { items, columnCount, onSelect, API_BASE } = data;
+    const index = props.rowIndex !== undefined ? props.rowIndex : props.index;
+    const style = props.style;
+
+    const startIndex = index * columnCount;
+    const rowItems = [];
+    for (let i = 0; i < columnCount; i++) {
+        rowItems.push(items[startIndex + i]);
+    }
+
+    return (
+        <div style={{ ...style, display: 'flex' }}>
+            {rowItems.map((item, i) => (
+                <SeriesCard
+                    key={item?.series_id || startIndex + i}
+                    data={data}
+                    columnIndex={i}
+                    rowIndex={index}
+                    style={{ width: `${100 / columnCount}%`, height: '100%', position: 'relative' }}
+                />
+            ))}
+        </div>
+    );
+});
 
 const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, isFullscreen, showChannels, setShowChannels, onStreamsUpdate, onDataLoaded, selectedType, setNavigationHandlers }) => {
     const [categories, setCategories] = useState([]);
     const [allStreams, setAllStreams] = useState([]);
+    const [recentStreams, setRecentStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -11,7 +74,6 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [showSort, setShowSort] = useState(false);
     const [sortBy, setSortBy] = useState('added');
-    const [visibleCount, setVisibleCount] = useState(50);
 
     // Estados para el detalle de la serie
     const [selectedSeries, setSelectedSeries] = useState(null);
@@ -20,7 +82,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     const [activeSeason, setActiveSeason] = useState(null);
 
     const categoriesRef = useRef(null);
-    const contentAreaRef = useRef(null);
+    const listRef = useRef(null);
     const hasReportedInitial = useRef(false);
 
     // Fetch All Categories and Series
@@ -34,19 +96,19 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                 ]);
 
                 const counts = {};
-                streamRes.data.forEach(s => {
+                (streamRes.data || []).forEach(s => {
                     counts[s.category_id] = (counts[s.category_id] || 0) + 1;
                 });
 
-                const enrichedCategories = catRes.data.map(cat => ({
+                const enrichedCategories = (catRes.data || []).map(cat => ({
                     ...cat,
                     count: counts[cat.category_id] || 0
                 }));
 
                 setCategories(enrichedCategories);
-                setAllStreams(streamRes.data);
+                setAllStreams(streamRes.data || []);
                 if (!hasReportedInitial.current) {
-                    onDataLoaded?.('series', streamRes.data);
+                    onDataLoaded?.('series', streamRes.data || []);
                     hasReportedInitial.current = true;
                 }
             } catch (err) {
@@ -63,6 +125,13 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         loadInitialData();
     }, [API_BASE, token]);
 
+    // Load History
+    useEffect(() => {
+        if (showChannels && selectedType === 'series') {
+            setRecentStreams(getHistory('series'));
+        }
+    }, [showChannels, selectedType]);
+
     // Debounce Search Logic
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -71,6 +140,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
 
     // Optimized Filtering & Sorting
     const filteredStreams = useMemo(() => {
+        if (selectedCategory === 'recent') return recentStreams;
         let result = [...allStreams];
         if (selectedCategory !== 'all') {
             result = result.filter(s => s.category_id === selectedCategory);
@@ -87,22 +157,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
             default: break;
         }
         return result;
-    }, [selectedCategory, allStreams, debouncedSearch, sortBy]);
-
-    // Infinite Scroll Logic
-    const handleScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        if (scrollHeight - scrollTop <= clientHeight + 500) {
-            if (visibleCount < filteredStreams.length) {
-                setVisibleCount(prev => prev + 50);
-            }
-        }
-    };
-
-    useEffect(() => {
-        setVisibleCount(50);
-        if (contentAreaRef.current) contentAreaRef.current.scrollTop = 0;
-    }, [selectedCategory, debouncedSearch, sortBy]);
+    }, [selectedCategory, allStreams, debouncedSearch, sortBy, recentStreams]);
 
     const handleBack = () => {
         if (selectedSeries) {
@@ -126,9 +181,8 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSeriesDetail(res.data);
-
-            // Auto seleccionar primera temporada
-            const seasons = Object.keys(res.data.episodes || {});
+            const episodes = res.data.episodes || {};
+            const seasons = Object.keys(episodes).sort((a, b) => Number(a) - Number(b));
             if (seasons.length > 0) {
                 setActiveSeason(seasons[0]);
             }
@@ -140,12 +194,16 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     };
 
     const handlePlayEpisode = (episode) => {
-        // Formatear el episodio como un stream reproducible
         const streamData = {
             ...episode,
             stream_id: episode.id,
+            id: episode.id,
+            series_id: selectedSeries?.series_id,
             name: episode.title,
-            stream_type: 'series'
+            stream_type: 'series',
+            container_extension: episode.container_extension || 'mp4',
+            cover: selectedSeries?.cover,
+            series_name: selectedSeries?.name
         };
         onPlayStream(streamData, 'series');
         setShowChannels(false);
@@ -158,29 +216,25 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
             if (!currentStream || !seriesDetail || !seriesDetail.episodes) return;
             let foundSeason = null;
             let foundIdx = -1;
-            const seasons = Object.keys(seriesDetail.episodes).sort((a, b) => a - b);
+            const episodes = seriesDetail.episodes || {};
+            const seasons = Object.keys(episodes).sort((a, b) => Number(a) - Number(b));
             for (const s of seasons) {
-                const idx = seriesDetail.episodes[s].findIndex(ep => ep.id === currentStream.id);
+                const idx = (episodes[s] || []).findIndex(ep => ep.id === currentStream.id);
                 if (idx >= 0) {
                     foundSeason = s; foundIdx = idx; break;
                 }
             }
             if (foundSeason !== null) {
-                const epList = seriesDetail.episodes[foundSeason];
+                const epList = episodes[foundSeason] || [];
                 if (foundIdx < epList.length - 1) {
-                    const nextEp = epList[foundIdx + 1];
-                    const streamData = { ...nextEp, stream_id: nextEp.id, name: nextEp.title, stream_type: 'series' };
-                    onPlayStream(streamData, 'series'); setShowChannels(false);
+                    handlePlayEpisode(epList[foundIdx + 1]);
                 } else {
                     const seasonIdx = seasons.indexOf(foundSeason);
                     if (seasonIdx < seasons.length - 1) {
                         const nextSeason = seasons[seasonIdx + 1];
                         setActiveSeason(nextSeason);
-                        const nextEp = seriesDetail.episodes[nextSeason][0];
-                        if (nextEp) {
-                            const streamData = { ...nextEp, stream_id: nextEp.id, name: nextEp.title, stream_type: 'series' };
-                            onPlayStream(streamData, 'series'); setShowChannels(false);
-                        }
+                        const nextEp = (episodes[nextSeason] || [])[0];
+                        if (nextEp) handlePlayEpisode(nextEp);
                     }
                 }
             }
@@ -190,35 +244,31 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
             if (!currentStream || !seriesDetail || !seriesDetail.episodes) return;
             let foundSeason = null;
             let foundIdx = -1;
-            const seasons = Object.keys(seriesDetail.episodes).sort((a, b) => a - b);
+            const episodes = seriesDetail.episodes || {};
+            const seasons = Object.keys(episodes).sort((a, b) => Number(a) - Number(b));
             for (const s of seasons) {
-                const idx = seriesDetail.episodes[s].findIndex(ep => ep.id === currentStream.id);
+                const idx = (episodes[s] || []).findIndex(ep => ep.id === currentStream.id);
                 if (idx >= 0) {
                     foundSeason = s; foundIdx = idx; break;
                 }
             }
             if (foundSeason !== null) {
-                const epList = seriesDetail.episodes[foundSeason];
+                const epList = episodes[foundSeason] || [];
                 if (foundIdx > 0) {
-                    const prevEp = epList[foundIdx - 1];
-                    const streamData = { ...prevEp, stream_id: prevEp.id, name: prevEp.title, stream_type: 'series' };
-                    onPlayStream(streamData, 'series'); setShowChannels(false);
+                    handlePlayEpisode(epList[foundIdx - 1]);
                 } else {
                     const seasonIdx = seasons.indexOf(foundSeason);
                     if (seasonIdx > 0) {
                         const prevSeason = seasons[seasonIdx - 1];
                         setActiveSeason(prevSeason);
-                        const prevEpList = seriesDetail.episodes[prevSeason];
+                        const prevEpList = episodes[prevSeason] || [];
                         const prevEp = prevEpList[prevEpList.length - 1];
-                        if (prevEp) {
-                            const streamData = { ...prevEp, stream_id: prevEp.id, name: prevEp.title, stream_type: 'series' };
-                            onPlayStream(streamData, 'series'); setShowChannels(false);
-                        }
+                        if (prevEp) handlePlayEpisode(prevEp);
                     }
                 }
             }
         };
-        setNavigationHandlers({ next: handleNext, prev: handlePrev });
+        setNavigationHandlers('series', { next: handleNext, prev: handlePrev });
     }, [currentStream, seriesDetail, setNavigationHandlers, onPlayStream, setShowChannels]);
 
     useEffect(() => {
@@ -235,15 +285,15 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
         za: 'Pedido por Z-A'
     };
 
-    if (loading && categories.length === 0) return <div className="loading-center"><div className="spinner"></div></div>;
+    if (loading && categories.length === 0) return <div className="loading-center" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'white', background: '#000' }}><div className="spinner"></div><p>Cargando Series...</p></div>;
+    if (error && allStreams.length === 0) return <div className="error-center" style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ff4444', background: '#000' }}><h2>⚠️ {error}</h2><button onClick={() => window.location.reload()} style={{ padding: '10px 20px', marginTop: '20px' }}>Reintentar</button></div>;
 
-    const currentCategoryName = selectedCategory === 'all' ? 'TODO' : categories.find(c => c.category_id === selectedCategory)?.category_name || '';
+    const currentCategoryName = selectedCategory === 'all' ? 'TODO' : (selectedCategory === 'recent' ? 'VISTO RECIENTEMENTE' : categories.find(c => c.category_id === selectedCategory)?.category_name || '');
 
     // RENDERIZADO DE VISTA DETALLE
     if (selectedSeries) {
         return (
             <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'column' }}>
-                {/* Top Navigation remains in Detail View for consistency */}
                 <div className="movie-top-nav">
                     <div className="movie-top-links">
                         <div className="movie-nav-item" onClick={() => { setSelectedType('live', false, true); setShowChannels(true); }}>TV en vivo</div>
@@ -253,9 +303,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         <div className="movie-nav-item active">Series</div>
                     </div>
                     <div className="movie-top-right">
-                        <div className="movie-search-container" style={{ visibility: 'hidden' }}>
-                            {/* Hidden search purely for layout alignment if needed, or omit it */}
-                        </div>
+                        <div className="movie-search-container" style={{ visibility: 'hidden' }}></div>
                         <div className="movie-top-logo">
                             <img src="/logo_splash.png" alt="Shadow TV" />
                         </div>
@@ -273,7 +321,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                             </button>
                         </div>
                         <div className="categories-scroll-area">
-                            {seriesDetail && seriesDetail.episodes && Object.keys(seriesDetail.episodes).sort((a, b) => a - b).map(seasonNum => (
+                            {seriesDetail && seriesDetail.episodes && Object.keys(seriesDetail.episodes).sort((a, b) => Number(a) - Number(b)).map(seasonNum => (
                                 <div
                                     key={seasonNum}
                                     className={`movie-category-item season-item ${activeSeason === seasonNum ? 'active' : ''}`}
@@ -295,7 +343,6 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         ) : (
                             <div className="episodes-list-container">
                                 {seriesDetail?.episodes?.[activeSeason]?.map((ep, idx) => {
-                                    // Múltiples fallbacks para asegurar que aparezca una imagen
                                     const epIcon = ep.movie_image || ep.info?.movie_image || ep.stream_icon || ep.icon || selectedSeries?.cover;
                                     const proxiedEpIcon = epIcon ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(epIcon)}&name=${encodeURIComponent(ep.title || '')}` : "/logo_splash.png";
                                     return (
@@ -303,13 +350,25 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                                             <div className="episode-index">{idx + 1}</div>
                                             <div className="episode-thumbnail">
                                                 <img src={proxiedEpIcon} alt={ep.title} onError={(e) => e.target.src = "/logo_splash.png"} />
+                                                {(() => {
+                                                    const rTime = getResumeTime('series', ep.id);
+                                                    const duration = ep.info?.duration_secs || ep.duration_secs || 0;
+                                                    if (rTime > 0 && duration > 0) {
+                                                        return (
+                                                            <div style={{ position: 'absolute', bottom: 0, left: 0, height: '4px', background: 'rgba(255,255,255,0.2)', width: '100%', zIndex: 12 }}>
+                                                                <div style={{ width: `${(rTime / duration) * 100}%`, height: '100%', background: '#ff4444' }}></div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
                                                 <div className="play-overlay">
                                                     <svg viewBox="0 0 24 24" fill="white" width="30" height="30"><path d="M8 5v14l11-7z" /></svg>
                                                 </div>
                                             </div>
                                             <div className="episode-info">
                                                 <div className="episode-title-row">
-                                                    <span className="episode-title">{selectedSeries.name} - S{String(activeSeason).padStart(2, '0')}E{String(ep.episode_num).padStart(2, '0')} - {ep.title}</span>
+                                                    <span className="episode-title">S{String(activeSeason).padStart(2, '0')}E{String(ep.episode_num).padStart(2, '0')} - {ep.title}</span>
                                                 </div>
                                                 <p className="episode-plot">{ep.info?.plot || 'Sin descripción disponible.'}</p>
                                             </div>
@@ -327,7 +386,6 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     // RENDERIZADO DE VISTA CUADRÍCULA (NORMAL)
     return (
         <div className="movie-hub-container series-hub-container" style={{ display: showChannels ? 'flex' : 'none', flexDirection: 'column' }}>
-            {/* Top Navigation */}
             <div className="movie-top-nav">
                 <div className="movie-top-links">
                     <div className="movie-nav-item" onClick={() => { setSelectedType('live', false, true); setShowChannels(true); }}>TV en vivo</div>
@@ -382,10 +440,12 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     </div>
 
                     <div className="categories-scroll-area" ref={categoriesRef}>
-                        <div className="movie-category-item">
-                            <span>Visto recientemente</span>
-                            <span className="category-count">0</span>
-                        </div>
+                        {recentStreams.length > 0 && (
+                            <div className={`movie-category-item ${selectedCategory === 'recent' ? 'active' : ''}`} onClick={() => setSelectedCategory('recent')}>
+                                <span>Visto recientemente</span>
+                                <span className="category-count">{recentStreams.length}</span>
+                            </div>
+                        )}
                         <div className={`movie-category-item ${selectedCategory === 'all' ? 'active' : ''}`} onClick={() => setSelectedCategory('all')}>
                             <span>ALL</span>
                             <span className="category-count">{allStreams.length}</span>
@@ -407,7 +467,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                     </div>
                 </div>
 
-                <div className="movie-content-area" ref={contentAreaRef} onScroll={handleScroll}>
+                <div className="movie-content-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden' }}>
                     <div className="movie-top-bar">
                         <div className="sort-dropdown" onClick={() => setShowSort(!showSort)}>
                             {SORT_LABELS[sortBy]}
@@ -416,7 +476,7 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                             </svg>
                             {showSort && (
                                 <div className="sort-options">
-                                    {Object.entries(SORT_LABELS).map(([key, label]) => (
+                                    {Object.entries(SORT_LABELS || {}).map(([key, label]) => (
                                         <div key={key} className="sort-option" onClick={(e) => { e.stopPropagation(); setSortBy(key); setShowSort(false); }}>
                                             {label}
                                         </div>
@@ -432,27 +492,41 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
                         </div>
                     </div>
 
-                    <div className="movie-poster-grid">
-                        {filteredStreams.slice(0, visibleCount).map(item => {
-                            const iconUrl = item.cover || item.stream_icon;
-                            const proxiedIcon = iconUrl ? `${API_BASE}/proxy-icon?url=${encodeURIComponent(iconUrl)}&name=${encodeURIComponent(item.name || '')}` : "/logo_splash.png";
-                            return (
-                                <div key={item.series_id || item.stream_id} className="movie-card-premium" onClick={() => handleSelectSeries(item)}>
-                                    <img src={proxiedIcon} alt={item.name} loading="lazy" onError={(e) => e.target.src = "/logo_splash.png"} />
-                                    <div className="movie-card-overlay">
-                                        <div className="movie-card-title">{item.name}</div>
-                                        <div className="movie-card-info">{item.name.match(/\((19|20)\d{2}\)/) ? item.name.match(/\((19|20)\d{2}\)/)[0].replace(/[()]/g, '') : ''}</div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <div className="movie-virtual-grid-wrapper" style={{ flex: 1, minHeight: 0, position: 'relative', width: '100%', height: '100%', boxSizing: 'border-box' }}>
+                        <AutoSizer renderProp={({ height, width }) => {
+                                const finalHeight = height || 600;
+                                const finalWidth = width || 800;
+                                if (height === 0 || width === 0) {
+                                    return <div style={{ height: '100%', width: '100%', background: 'rgba(0,100,0,0.5)', color: 'white', padding: '10px', fontSize: '20px', fontWeight: 'bold' }}>⚠️ ERROR SERIES DIM: H={height} W={width}</div>;
+                                }
+                                const minCardWidth = 180;
+                                const columnCount = Math.max(1, Math.floor(finalWidth / minCardWidth));
+                                const rowCount = Math.ceil(filteredStreams.length / columnCount);
+                                const columnWidth = finalWidth / columnCount;
+                                const rowHeight = columnWidth * 1.5;
 
-                    {visibleCount < filteredStreams.length && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-                            Cargando más contenido...
-                        </div>
-                    )}
+                                const itemData = {
+                                    items: filteredStreams,
+                                    columnCount,
+                                    onSelect: handleSelectSeries,
+                                    API_BASE
+                                };
+
+                                return (
+                                    <List
+                                        rowCount={rowCount}
+                                        rowHeight={rowHeight}
+                                        rowProps={itemData}
+                                        rowComponent={SeriesRow}
+                                        className="series-scroll-container"
+                                        style={{ 
+                                            height: finalHeight, 
+                                            width: finalWidth
+                                        }}
+                                    />
+                                );
+                            }} />
+                    </div>
                 </div>
             </div>
         </div>

@@ -13,6 +13,36 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const loadFavorites = useCallback(() => {
+        try {
+            const stored = localStorage.getItem('tv_favorites');
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    }, []);
+
+    const [favorites, setFavorites] = useState(loadFavorites);
+
+    useEffect(() => {
+        const handleFavoritesChanged = () => {
+            setFavorites(loadFavorites());
+        };
+        window.addEventListener('favorites_changed', handleFavoritesChanged);
+        return () => window.removeEventListener('favorites_changed', handleFavoritesChanged);
+    }, [loadFavorites]);
+
+    const toggleFavorite = useCallback((streamId) => {
+        setFavorites(prev => {
+            const idStr = streamId.toString();
+            const isFav = prev.includes(idStr);
+            const newFavs = isFav ? prev.filter(id => id !== idStr) : [...prev, idStr];
+            localStorage.setItem('tv_favorites', JSON.stringify(newFavs));
+            window.dispatchEvent(new Event('favorites_changed'));
+            return newFavs;
+        });
+    }, []);
+
     const [categories, setCategories] = useState([]);
     const [streams, setStreams] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -26,26 +56,28 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
     const streamCache = useRef({});
 
     const fetchStreams = useCallback(async (categoryId) => {
-        console.log(`[TVHub] Fetching streams for category: ${categoryId}`);
-        if (streamCache.current[categoryId]) {
-            console.log(`[TVHub] Using cached streams for: ${categoryId}`);
-            setStreams(streamCache.current[categoryId]);
+        const fetchId = categoryId === 'favorites' ? 'all' : categoryId;
+        console.log(`[TVHub] Fetching streams for category: ${categoryId} (using: ${fetchId})`);
+        
+        if (streamCache.current[fetchId]) {
+            console.log(`[TVHub] Using cached streams for: ${fetchId}`);
+            setStreams(streamCache.current[fetchId]);
             setSearchQuery('');
-            onStreamsUpdate(streamCache.current[categoryId]);
+            onStreamsUpdate(streamCache.current[fetchId]);
             return;
         }
 
         setStreamsLoading(true); // Start loading streams
         try {
-            const url = categoryId === 'all'
+            const url = fetchId === 'all'
                 ? `${API_BASE}/streams/live`
-                : `${API_BASE}/streams/live?category_id=${categoryId}`;
+                : `${API_BASE}/streams/live?category_id=${fetchId}`;
 
             console.log(`[TVHub] Requesting URL: ${url}`);
             const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
             console.log(`[TVHub] Streams received: ${res.data?.length || 0}`);
 
-            streamCache.current[categoryId] = res.data;
+            streamCache.current[fetchId] = res.data;
             setStreams(res.data);
             setSearchQuery('');
             setError(null);
@@ -85,7 +117,11 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                 const res = await axios.get(`${API_BASE}/categories/live`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                const allCategories = [{ category_id: 'all', category_name: 'TODO' }, ...res.data];
+                const allCategories = [
+                    { category_id: 'all', category_name: 'TODO' },
+                    { category_id: 'favorites', category_name: 'Favoritos' },
+                    ...res.data
+                ];
                 setCategories(allCategories);
                 if (!selectedCategory) {
                     handleCategorySelect('all');
@@ -106,14 +142,20 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
     const filteredStreams = useMemo(() => {
         if (!streams) return [];
-        if (!searchQuery) return streams;
+        let baseStreams = streams;
+        
+        if (selectedCategory === 'favorites') {
+            baseStreams = streams.filter(s => favorites.includes((s.stream_id || s.id).toString()));
+        }
+
+        if (!searchQuery) return baseStreams;
         const query = searchQuery.toLowerCase();
-        return streams.filter(item => {
+        return baseStreams.filter(item => {
             const name = item.name?.toLowerCase() || '';
             const id = (item.stream_id || item.id || '').toString().toLowerCase();
             return name.includes(query) || id.includes(query);
         });
-    }, [streams, searchQuery]);
+    }, [streams, searchQuery, favorites, selectedCategory]);
 
     useEffect(() => {
         if (typeof onStreamsUpdate === 'function') {
@@ -315,6 +357,8 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
                                 playStream={handlePlayStream}
                                 token={token}
                                 loading={streamsLoading}
+                                favorites={favorites}
+                                toggleFavorite={toggleFavorite}
                             />
 
                         </div>
