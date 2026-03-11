@@ -53,6 +53,10 @@ html.native-playing *::backdrop {
   background-color: #000000;
   overflow: hidden;
   color: #fff;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* --- Layout General VOD/Series --- */

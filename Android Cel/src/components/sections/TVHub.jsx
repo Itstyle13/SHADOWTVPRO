@@ -232,13 +232,6 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             pointerEvents: 'none', // IMPORTANTE: no bloquear clics del resto de la app
             zIndex: 1500
         }}>
-            {(!showChannels && isFullscreen && showUI) && (
-                <div className="open-menu-btn" onClick={() => setShowChannels(true)} title="Abrir Pantalla de Canales">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="24" height="24">
-                        <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
-                    </svg>
-                </div>
-            )}
 
             {(!isFullscreen || showChannels) && (
                 <div
@@ -600,14 +593,6 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
                 .global-close-btn:hover { background: rgba(255, 255, 255, 0.15); transform: rotate(90deg); }
 
-                .open-menu-btn {
-                    position: absolute; top: 40px; left: 40px; width: 54px; height: 54px;
-                    background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(15px); border-radius: 16px;
-                    display: flex; align-items: center; justify-content: center; color: #fff; cursor: pointer;
-                    z-index: 500; border: 1px solid rgba(255, 255, 255, 0.1); transition: all 0.3s;
-                }
-
-                .open-menu-btn:hover { background: #3b82f6; transform: scale(1.1); }
 
                 .vertical-category-list::-webkit-scrollbar { width: 4px; }
                 .vertical-category-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }

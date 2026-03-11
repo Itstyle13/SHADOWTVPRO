@@ -173,7 +173,17 @@ const PlayerInterface = forwardRef(({
                     )}
 
                     <div className="controls-row">
-                        <div className="nav-btn small-btn" onClick={playPrevious} title="Canal Anterior">
+                        <div 
+                            className="nav-btn small-btn" 
+                            onClick={() => {
+                                if (selectedType === 'vod' || selectedType === 'series') {
+                                    onSeek(Math.max(0, currentTime - 10));
+                                } else {
+                                    playPrevious();
+                                }
+                            }} 
+                            title={selectedType === 'live' ? "Canal Anterior" : "Retroceder 10s"}
+                        >
                             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                                 <polygon points="19 20 9 12 19 4 19 20" /><rect x="5" y="4" width="2" height="16" />
                             </svg>
@@ -184,7 +194,17 @@ const PlayerInterface = forwardRef(({
                                 : <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3" /></svg>
                             }
                         </div>
-                        <div className="nav-btn small-btn" onClick={playNext} title="Siguiente Canal">
+                        <div 
+                            className="nav-btn small-btn" 
+                            onClick={() => {
+                                if (selectedType === 'vod' || selectedType === 'series') {
+                                    onSeek(Math.min(duration, currentTime + 10));
+                                } else {
+                                    playNext();
+                                }
+                            }} 
+                            title={selectedType === 'live' ? "Siguiente Canal" : "Adelantar 10s"}
+                        >
                             <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
                                 <polygon points="5 4 15 12 5 20 5 4" /><rect x="17" y="4" width="2" height="16" />
                             </svg>
