@@ -134,10 +134,12 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
                 if (isPaused && isReady) return;
 
                 if (!isPaused) {
-                    // Para Live TV en reproductores nativos como ExoPlayer, el time window puede 
-                    // desplazarse hacia atrás o fluctuar. Por eso comprobamos si ha cambiado (se ha movido) 
-                    // en lugar de obligar a que sea estrictamente mayor.
-                    if (Math.abs(currentPos - lastPosRef.current) > 0.2) {
+                    // Si estamos en un reproductor nativo (ExoPlayer) viendo Live TV (.ts directo), 
+                    // a veces el reloj de ExoPlayer no avanza igual que la web por falta de metadatos o chunks contiguos en TS.
+                    // Desactivamos el estancamiento por tiempo falso en live native para evitar bucles.
+                    const isNativeLive = Capacitor?.isNativePlatform?.() && type === 'live';
+
+                    if (Math.abs(currentPos - lastPosRef.current) > 0.2 || isNativeLive) {
                         // El video se está moviendo normalmente — reseteamos el reloj de estancamiento
                         lastPosRef.current = currentPos;
                         lastTimeRef.current = now;
@@ -160,7 +162,9 @@ export const useVideoPlayer = ({ stream, type, token, API_BASE, autoPlay, isMute
             cleanupPlayers();
             stopWatchdog();
 
-            const extension = stream.container_extension ? `.${stream.container_extension}` : (type === 'live' ? '.ts' : '.mp4');
+            // FORZAR .ts para Live TV, independientemente de container_extension. 
+            // Esto evita el bug de HLS donde M3U8 hace requests repetidos cada 20s y crea conexiones fantasma.
+            const extension = type === 'live' ? '.ts' : (stream.container_extension ? `.${stream.container_extension}` : '.mp4');
             let finalUrl = stream.url;
 
             if (!finalUrl) {
