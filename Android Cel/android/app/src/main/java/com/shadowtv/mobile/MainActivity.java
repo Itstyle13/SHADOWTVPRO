@@ -23,15 +23,11 @@ import androidx.media3.ui.AspectRatioFrameLayout;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 
-import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory;
-import androidx.media3.exoplayer.hls.DefaultHlsExtractorFactory;
-
 @UnstableApi
 public class MainActivity extends BridgeActivity {
     
     private ExoPlayer player;
     private PlayerView playerView;
-    private static final String USER_AGENT = "ShadowTvPlayer LibVLC/3.0.22-rc1";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -67,7 +63,7 @@ public class MainActivity extends BridgeActivity {
     private void setupPlayer() {
         if (playerView != null) return; // ya configurado
 
-        // 1. Configurar WebView como transparente
+        // 1. Configurar WebView como transparente para que deje ver lo de atras
         getBridge().getWebView().setBackgroundColor(Color.TRANSPARENT);
 
         // 2. Obtener el contenedor base de Capacitor
@@ -88,96 +84,67 @@ public class MainActivity extends BridgeActivity {
         // 4. Añadirlo detrás del WebView (index 0)
         parent.addView(playerView, 0);
 
-        // Ajuste inteligente: Inicia rápido (1s) pero llega hasta los 60s de colchón para estabilidad
         androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        15000,  // minBufferMs (Bajado a 15s para no bloquear el inicio)
-                        60000,  // maxBufferMs (Mantenemos 60s de colchón máximo)
-                        1000,   // bufferForPlaybackMs (Inicia al tener solo 1 segundo)
-                        2000    // bufferForPlaybackAfterRebufferMs
+                        30000,  // minBufferMs (aumentado para mayor estibilidad, Smart Buffer base)
+                        180000, // maxBufferMs (3 minutos para Timeshift local)
+                        5000,   // bufferForPlaybackMs (carga inicial más pesada para evitar micro-congelamientos)
+                        8000    // bufferForPlaybackAfterRebufferMs (colchón extra tras un rebuffer)
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
 
-        // MODO FUERZA BRUTA: Preferimos decodificadores de software para evitar fallos de hardware (pantalla verde)
-        androidx.media3.exoplayer.DefaultRenderersFactory renderersFactory = new androidx.media3.exoplayer.DefaultRenderersFactory(this)
-                .setExtensionRendererMode(androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-                .setAllowedVideoJoiningTimeMs(15000) // Mucho más tolerante (15 segundos)
-                .setEnableAudioTrackPlaybackParams(true);
-
-        // CONFIGURACIÓN DE RED GLOBAL (Forzado de Identidad ShadowTv)
-        java.util.Map<String, String> defaultRequestProperties = new java.util.HashMap<>();
-        defaultRequestProperties.put("User-Agent", USER_AGENT);
-        
-        DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
-                .setUserAgent(USER_AGENT)
-                .setDefaultRequestProperties(defaultRequestProperties)
-                .setAllowCrossProtocolRedirects(true);
-        
-        // Fábrica de Extractores con máxima tolerancia para señales IPTV
-        androidx.media3.extractor.DefaultExtractorsFactory extractorsFactory = new androidx.media3.extractor.DefaultExtractorsFactory()
-                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES 
-                                   | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS)
-                .setTsExtractorTimestampSearchBytes(1500 * 188);
-
-        androidx.media3.exoplayer.source.DefaultMediaSourceFactory mediaSourceFactory = 
-                new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this, extractorsFactory)
-                        .setDataSourceFactory(dataSourceFactory);
-
-        player = new ExoPlayer.Builder(this, renderersFactory)
-                .setMediaSourceFactory(mediaSourceFactory)
+        player = new ExoPlayer.Builder(this)
                 .setLoadControl(loadControl)
                 .build();
-        
-        // Optimización agresiva para IPTV: Evitar pixelación al buscar (Auto-Kicker)
-        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC);
-        player.setVideoScalingMode(androidx.media3.common.C.VIDEO_SCALING_MODE_SCALE_TO_FIT);
-        
-        // Evitar que el video espere al audio y permitir pérdida de marcos para evitar pantalla congelada
-        player.setTrackSelectionParameters(
-            player.getTrackSelectionParameters().buildUpon()
-                .setPreferredVideoMimeType(androidx.media3.common.MimeTypes.VIDEO_H264)
-                .build()
-        );
         
         player.addListener(new androidx.media3.common.Player.Listener() {
             @Override
             public void onPlayerError(androidx.media3.common.PlaybackException error) {
+                // Delegamos la reconexión inteligente al Watchdog de React (useVideoPlayer.js)
+                // Anteriormente, llamar a playVideo(currentUrl) aquí causaba un bucle infinito
+                // de 2 segundos si el servidor Xtream enviaba un error temporal o cerraba la conexión.
                 System.out.println("ExoPlayer Error: " + error.getMessage());
+            }
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == androidx.media3.common.Player.STATE_ENDED) {
+                    // Igual que arriba, si el stream termina (microcorte), dejamos que React 
+                    // decida cuándo y cómo reconectar usando su backoff exponencial.
+                    System.out.println("ExoPlayer ended.");
+                }
             }
         });
 
         playerView.setPlayer(player);
     }
 
-
-
     private String currentUrl;
-    private int stuckCounter = 0;
 
     public void playVideo(String url) {
         currentUrl = url;
         runOnUiThread(() -> {
-            if (player == null) {
-                setupPlayer();
-            } else {
-                player.stop();
-                player.clearMediaItems();
-            }
+            if (player == null) setupPlayer();
 
             Uri videoUri = Uri.parse(url);
             MediaItem mediaItem;
-            
+
             if (url.contains(".m3u8")) {
                 mediaItem = new MediaItem.Builder()
                         .setUri(videoUri)
                         .setMimeType(MimeTypes.APPLICATION_M3U8)
                         .build();
+                DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
+                        .setAllowCrossProtocolRedirects(true);
+                HlsMediaSource hlsMediaSource = new HlsMediaSource.Factory(dataSourceFactory)
+                        .setAllowChunklessPreparation(true) // Prepara más rápido y con menos metadata
+                        .createMediaSource(mediaItem);
+                player.setMediaSource(hlsMediaSource);
             } else {
                 mediaItem = MediaItem.fromUri(videoUri);
+                player.setMediaItem(mediaItem);
             }
 
-            player.setMediaItem(mediaItem);
             player.prepare();
             player.setPlayWhenReady(true);
         });

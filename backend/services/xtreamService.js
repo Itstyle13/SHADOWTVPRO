@@ -17,10 +17,9 @@ const cache = new NodeCache({ stdTTL: 600 });
 
 class XtreamService {
     async authenticate(baseUrl, username, password) {
-        const cleanUrl = baseUrl.replace(/\/$/, ''); // Quitar barra final si existe
         try {
-            console.log(`[XTREAM] Intentando autenticar usuario: ${username} en ${cleanUrl}`);
-            const response = await axios.get(`${cleanUrl}/player_api.php`, {
+            console.log(`[XTREAM] Intentando autenticar usuario: ${username} en ${baseUrl}`);
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username: username,
                     password: password
@@ -69,17 +68,13 @@ class XtreamService {
             return cachedData;
         }
 
-        const cleanUrl = baseUrl.replace(/\/$/, '');
         const action = type === 'series' ? 'get_series_categories' : (type === 'vod' ? 'get_vod_categories' : 'get_live_categories');
         try {
-            const response = await axios.get(`${cleanUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
                     action
-                },
-                headers: {
-                    'User-Agent': 'IPTVSmarters/1.0.0'
                 },
                 httpsAgent
             });
@@ -101,17 +96,13 @@ class XtreamService {
             return cachedData;
         }
 
-        const cleanUrl = baseUrl.replace(/\/$/, '');
         const action = type === 'series' ? 'get_series' : (type === 'vod' ? 'get_vod_streams' : 'get_live_streams');
         try {
             const params = { username, password, action };
             if (categoryId) params.category_id = categoryId;
 
-            const response = await axios.get(`${cleanUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params,
-                headers: {
-                    'User-Agent': 'IPTVSmarters/1.0.0'
-                },
                 httpsAgent
             });
 
@@ -129,18 +120,14 @@ class XtreamService {
 
         if (cachedData) return cachedData;
 
-        const cleanUrl = baseUrl.replace(/\/$/, '');
         try {
-            const response = await axios.get(`${cleanUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
                     action: 'get_short_epg',
                     stream_id: streamId,
                     limit
-                },
-                headers: {
-                    'User-Agent': 'IPTVSmarters/1.0.0'
                 },
                 httpsAgent
             });
@@ -162,17 +149,13 @@ class XtreamService {
 
         if (cachedData) return cachedData;
 
-        const cleanUrl = baseUrl.replace(/\/$/, '');
         try {
-            const response = await axios.get(`${cleanUrl}/player_api.php`, {
+            const response = await axios.get(`${baseUrl}/player_api.php`, {
                 params: {
                     username,
                     password,
                     action: 'get_series_info',
                     series_id: seriesId
-                },
-                headers: {
-                    'User-Agent': 'IPTVSmarters/1.0.0'
                 },
                 httpsAgent
             });

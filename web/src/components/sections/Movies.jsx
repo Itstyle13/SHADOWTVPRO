@@ -20,37 +20,33 @@ const Movies = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     // Fetch Initial Data
     useEffect(() => {
         const loadInitialData = async () => {
-            if (!token) return;
             setLoading(true);
             try {
                 const [catRes, streamRes] = await Promise.all([
-                    axios.get(`${API_BASE}/categories/vod`, { headers: { 'Authorization': `Bearer ${token}` } }),
-                    axios.get(`${API_BASE}/streams/vod`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    axios.get(`${API_BASE}/categories/vod`, { headers: { Authorization: `Bearer ${token}` } }),
+                    axios.get(`${API_BASE}/streams/vod`, { headers: { Authorization: `Bearer ${token}` } })
                 ]);
-
-                const catData = Array.isArray(catRes.data) ? catRes.data : [];
-                const streamData = Array.isArray(streamRes.data) ? streamRes.data : [];
 
                 // Optimización: Calcular conteos en una sola pasada (O(N))
                 const counts = {};
-                streamData.forEach(s => {
+                streamRes.data.forEach(s => {
                     counts[s.category_id] = (counts[s.category_id] || 0) + 1;
                 });
 
-                const enrichedCategories = catData.map(cat => ({
+                const enrichedCategories = catRes.data.map(cat => ({
                     ...cat,
                     count: counts[cat.category_id] || 0
                 }));
 
                 setCategories(enrichedCategories);
-                setAllStreams(streamData);
+                setAllStreams(streamRes.data);
                 if (!hasReportedInitial.current) {
-                    onDataLoaded?.('vod', streamData);
+                    onDataLoaded?.('vod', streamRes.data);
                     hasReportedInitial.current = true;
                 }
             } catch (err) {
-                console.error("[Movies] Error al cargar:", err);
-                setError(err.response?.status === 401 ? 'Sesión expirada' : 'Error al cargar contenido');
+                setError('Error al cargar contenido');
+                console.error(err);
                 if (!hasReportedInitial.current) {
                     onDataLoaded?.('vod', []);
                     hasReportedInitial.current = true;
