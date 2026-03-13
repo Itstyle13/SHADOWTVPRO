@@ -80,19 +80,26 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
 
     useEffect(() => {
         const fetchCategories = async () => {
+            if (!token) return;
             setLoading(true);
             try {
                 const res = await axios.get(`${API_BASE}/categories/live`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const allCategories = [{ category_id: 'all', category_name: 'TODO' }, ...res.data];
+                
+                const data = Array.isArray(res.data) ? res.data : [];
+                const allCategories = [{ category_id: 'all', category_name: 'TODO' }, ...data];
                 setCategories(allCategories);
-                if (!selectedCategory) {
+                
+                if (!selectedCategory && data.length > 0) {
                     handleCategorySelect('all');
+                } else if (data.length === 0) {
+                    setError('No se encontraron canales en este servidor');
                 }
             } catch (err) {
                 console.error("Error loading categories:", err);
-                setError('Error al cargar categorías');
+                const msg = err.response?.status === 401 ? 'Sesión expirada. Por favor, vuelve a entrar.' : 'Error al conectar con el servidor';
+                setError(msg);
                 if (!hasReportedInitial.current) {
                     onDataLoaded?.('live');
                     hasReportedInitial.current = true;
@@ -102,7 +109,7 @@ const TVHub = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType, 
             }
         };
         fetchCategories();
-    }, [API_BASE, token, selectedCategory, handleCategorySelect, onDataLoaded]);
+    }, [API_BASE, token]); // Simplificamos dependencias para evitar loops
 
     const filteredStreams = useMemo(() => {
         if (!streams) return [];

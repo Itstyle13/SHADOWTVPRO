@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
+const API_ROOT = import.meta.env.VITE_API_BASE_URL || 'https://shadow-tv-backend.onrender.com';
+const API_BASE = API_ROOT.endsWith('/api') ? API_ROOT : `${API_ROOT}/api`;
 
 const apiService = {
     async get(endpoint, token) {

@@ -26,32 +26,36 @@ const Series = ({ API_BASE, token, onPlayStream, currentStream, setSelectedType,
     // Fetch All Categories and Series
     useEffect(() => {
         const loadInitialData = async () => {
+            if (!token) return;
             setLoading(true);
             try {
                 const [catRes, streamRes] = await Promise.all([
-                    axios.get(`${API_BASE}/categories/series`, { headers: { Authorization: `Bearer ${token}` } }),
-                    axios.get(`${API_BASE}/streams/series`, { headers: { Authorization: `Bearer ${token}` } })
+                    axios.get(`${API_BASE}/categories/series`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    axios.get(`${API_BASE}/streams/series`, { headers: { 'Authorization': `Bearer ${token}` } })
                 ]);
 
+                const catData = Array.isArray(catRes.data) ? catRes.data : [];
+                const streamData = Array.isArray(streamRes.data) ? streamRes.data : [];
+
                 const counts = {};
-                streamRes.data.forEach(s => {
+                streamData.forEach(s => {
                     counts[s.category_id] = (counts[s.category_id] || 0) + 1;
                 });
 
-                const enrichedCategories = catRes.data.map(cat => ({
+                const enrichedCategories = catData.map(cat => ({
                     ...cat,
                     count: counts[cat.category_id] || 0
                 }));
 
                 setCategories(enrichedCategories);
-                setAllStreams(streamRes.data);
+                setAllStreams(streamData);
                 if (!hasReportedInitial.current) {
-                    onDataLoaded?.('series', streamRes.data);
+                    onDataLoaded?.('series', streamData);
                     hasReportedInitial.current = true;
                 }
             } catch (err) {
-                setError('Error al cargar contenido de series');
-                console.error(err);
+                console.error("[Series] Error al cargar:", err);
+                setError(err.response?.status === 401 ? 'Sesión expirada' : 'Error al cargar contenido de series');
                 if (!hasReportedInitial.current) {
                     onDataLoaded?.('series', []);
                     hasReportedInitial.current = true;
